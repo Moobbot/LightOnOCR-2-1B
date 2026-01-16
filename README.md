@@ -24,12 +24,12 @@ tags:
 ---
 
 <div align="center">
-  <img src="lightonocr-banner.png" alt="LightOnOCR-2-1B-base Banner" width="600"/>
+  <img src="lightonocr-banner.png" alt="LightOnOCR-2-1B Banner" width="600"/>
 </div>
 
-# LightOnOCR-2-1B-base
+# LightOnOCR-2-1B
 
-**Base model for fine-tuning.** This is the pre-RLVR checkpoint with strong OCR capabilities, ideal as a starting point for domain adaptation and custom fine-tuning.
+**Best OCR model (recommended).** LightOnOCR-2-1B is our flagship OCR model, refined with RLVR training for maximum accuracy. We recommend this variant for most OCR tasks.
 
 ## Highlights
 
@@ -84,8 +84,8 @@ from transformers import LightOnOcrForConditionalGeneration, LightOnOcrProcessor
 device = "mps" if torch.backends.mps.is_available() else "cuda" if torch.cuda.is_available() else "cpu"
 dtype = torch.float32 if device == "mps" else torch.bfloat16
 
-model = LightOnOcrForConditionalGeneration.from_pretrained("lightonai/LightOnOCR-2-1B-base", torch_dtype=dtype).to(device)
-processor = LightOnOcrProcessor.from_pretrained("lightonai/LightOnOCR-2-1B-base")
+model = LightOnOcrForConditionalGeneration.from_pretrained("lightonai/LightOnOCR-2-1B", torch_dtype=dtype).to(device)
+processor = LightOnOcrProcessor.from_pretrained("lightonai/LightOnOCR-2-1B")
 
 url = "https://huggingface.co/datasets/hf-internal-testing/fixtures_ocr/resolve/main/SROIE-receipt.jpeg"
 
@@ -111,7 +111,7 @@ print(output_text)
 ## Usage with vLLM
 
 ```bash
-vllm serve lightonai/LightOnOCR-2-1B-base \
+vllm serve lightonai/LightOnOCR-2-1B \
     --limit-mm-per-prompt '{"image": 1}' --mm-processor-cache-gb 0 --no-enable-prefix-caching
 ```
 
@@ -122,7 +122,7 @@ import pypdfium2 as pdfium
 import io
 
 ENDPOINT = "http://localhost:8000/v1/chat/completions"
-MODEL = "lightonai/LightOnOCR-2-1B-base"
+MODEL = "lightonai/LightOnOCR-2-1B"
 
 # Download PDF from arXiv
 pdf_url = "https://arxiv.org/pdf/2412.13663"
@@ -171,12 +171,13 @@ print(text)
 
 ## Fine-tuning
 
-LightOnOCR-2-1B-base is fully differentiable and supports:
+LightOnOCR-2 is fully differentiable and supports:
 
 * LoRA fine-tuning
 * Domain adaptation (receipts, scientific articles, forms, etc.)
 * Multilingual fine-tuning with task-specific corpora
-* Custom RLVR training with your own reward functions
+
+For fine-tuning, we recommend starting with the **[LightOnOCR-2-1B-base](https://huggingface.co/lightonai/LightOnOCR-2-1B-base)** variant.
 
 ---
 
