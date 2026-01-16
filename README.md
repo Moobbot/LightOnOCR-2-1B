@@ -21,17 +21,15 @@ tags:
 - pdf
 - tables
 - forms
-- bounding-boxes
-- image-localization
 ---
 
 <div align="center">
-  <img src="lightonocr-banner.png" alt="LightOnOCR-2-1B-bbox-base Banner" width="600"/>
+  <img src="lightonocr-banner.png" alt="LightOnOCR-2-1B-base Banner" width="600"/>
 </div>
 
-# LightOnOCR-2-1B-bbox-base
+# LightOnOCR-2-1B-base
 
-**Base model with bounding boxes for fine-tuning.** This is the pre-RLVR checkpoint that predicts both text and image bounding boxes, ideal as a starting point for domain adaptation with localization capabilities.
+**Base model for fine-tuning.** This is the pre-RLVR checkpoint with strong OCR capabilities, ideal as a starting point for domain adaptation and custom fine-tuning.
 
 ## Highlights
 
@@ -60,18 +58,6 @@ tags:
 
 ---
 
-## Image Localization
-
-The output format for embedded images is:
-
-```
-![image](image_N.png) x1,y1,x2,y2
-```
-
-Where coordinates are normalized to `[0, 1000]`.
-
----
-
 ## Benchmarks
 
 <div align="center">
@@ -82,7 +68,7 @@ Where coordinates are normalized to `[0, 1000]`.
 
 ---
 
-## Installation
+## Usage with Transformers
 
 > **Note:** LightOnOCR-2 requires transformers installed from source (not yet in a stable release).
 
@@ -91,10 +77,6 @@ uv pip install git+https://github.com/huggingface/transformers
 uv pip install pillow pypdfium2
 ```
 
----
-
-## Usage with Transformers
-
 ```python
 import torch
 from transformers import LightOnOcrForConditionalGeneration, LightOnOcrProcessor
@@ -102,8 +84,8 @@ from transformers import LightOnOcrForConditionalGeneration, LightOnOcrProcessor
 device = "mps" if torch.backends.mps.is_available() else "cuda" if torch.cuda.is_available() else "cpu"
 dtype = torch.float32 if device == "mps" else torch.bfloat16
 
-model = LightOnOcrForConditionalGeneration.from_pretrained("lightonai/LightOnOCR-2-1B-bbox-base", torch_dtype=dtype).to(device)
-processor = LightOnOcrProcessor.from_pretrained("lightonai/LightOnOCR-2-1B-bbox-base")
+model = LightOnOcrForConditionalGeneration.from_pretrained("lightonai/LightOnOCR-2-1B-base", torch_dtype=dtype).to(device)
+processor = LightOnOcrProcessor.from_pretrained("lightonai/LightOnOCR-2-1B-base")
 
 url = "https://huggingface.co/datasets/hf-internal-testing/fixtures_ocr/resolve/main/SROIE-receipt.jpeg"
 
@@ -129,7 +111,7 @@ print(output_text)
 ## Usage with vLLM
 
 ```bash
-vllm serve lightonai/LightOnOCR-2-1B-bbox-base \
+vllm serve lightonai/LightOnOCR-2-1B-base \
     --limit-mm-per-prompt '{"image": 1}' --mm-processor-cache-gb 0 --no-enable-prefix-caching
 ```
 
@@ -140,7 +122,7 @@ import pypdfium2 as pdfium
 import io
 
 ENDPOINT = "http://localhost:8000/v1/chat/completions"
-MODEL = "lightonai/LightOnOCR-2-1B-bbox-base"
+MODEL = "lightonai/LightOnOCR-2-1B-base"
 
 # Download PDF from arXiv
 pdf_url = "https://arxiv.org/pdf/2412.13663"
@@ -189,11 +171,12 @@ print(text)
 
 ## Fine-tuning
 
-LightOnOCR-2-1B-bbox-base is fully differentiable and supports:
+LightOnOCR-2-1B-base is fully differentiable and supports:
 
 * LoRA fine-tuning
-* Domain adaptation with image localization requirements
-* Custom RLVR training with IoU-based or custom reward functions
+* Domain adaptation (receipts, scientific articles, forms, etc.)
+* Multilingual fine-tuning with task-specific corpora
+* Custom RLVR training with your own reward functions
 
 ---
 
