@@ -29,7 +29,7 @@ tags:
 
 # LightOnOCR-2-1B
 
-**Best OCR model (recommended).** LightOnOCR-2-1B is our flagship OCR model, refined with RLVR training for maximum accuracy. We recommend this variant for most OCR tasks.
+**Best OCR model .** LightOnOCR-2-1B is our flagship OCR model, refined with RLVR training for maximum accuracy. We recommend this variant for most OCR tasks.
 
 ## About LightOnOCR-2
 
@@ -45,7 +45,7 @@ LightOnOCR-2 is an efficient end-to-end 1B-parameter vision-language model for c
 
 ---
 
-📄 **[Paper](https://huggingface.co/papers/lightonocr-2)** | 📝 **[Blog Post](https://huggingface.co/blog/lightonai/lightonocr-2)** | 🚀 **[Demo](https://huggingface.co/spaces/lightonai/LightOnOCR-2-1B-Demo)** | 📊 **[Dataset](https://huggingface.co/datasets/lightonai/LightOnOCR-mix-0126)**
+📄 **[Paper](https://huggingface.co/papers/lightonocr-2)** | 📝 **[Blog Post](https://huggingface.co/blog/lightonai/lightonocr-2)** | 🚀 **[Demo](https://huggingface.co/spaces/lightonai/LightOnOCR-2-1B-Demo)** | 📊 **[Dataset](https://huggingface.co/datasets/lightonai/LightOnOCR-mix-0126)** | 📊 **[BBox Dataset](https://huggingface.co/datasets/lightonai/LightOnOCR-bbox-mix-0126)** | 📓 **[Finetuning Notebook](https://colab.research.google.com/drive/1WjbsFJZ4vOAAlKtcCauFLn_evo5UBRNa?usp=sharing)**
 
 ---
 
@@ -53,7 +53,7 @@ LightOnOCR-2 is an efficient end-to-end 1B-parameter vision-language model for c
 
 | Variant | Description |
 |---------|-------------|
-| **[LightOnOCR-2-1B](https://huggingface.co/lightonai/LightOnOCR-2-1B)** | Best OCR model (recommended) |
+| **[LightOnOCR-2-1B](https://huggingface.co/lightonai/LightOnOCR-2-1B)** | Best OCR model  |
 | **[LightOnOCR-2-1B-base](https://huggingface.co/lightonai/LightOnOCR-2-1B-base)** | Base model, ideal for fine-tuning |
 | **[LightOnOCR-2-1B-bbox](https://huggingface.co/lightonai/LightOnOCR-2-1B-bbox)** | Best model with image bounding boxes |
 | **[LightOnOCR-2-1B-bbox-base](https://huggingface.co/lightonai/LightOnOCR-2-1B-bbox-base)** | Base bbox model, ideal for fine-tuning |
