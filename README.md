@@ -194,10 +194,10 @@ Apache License 2.0
 ## Citation
 
 ```bibtex
-@misc{lightonocr2_2025,
+@misc{lightonocr2_2026,
   title        = {LightOnOCR: End-to-End, Multilingual, Efficient, State-of-the-Art Vision-Language Model for OCR},
   author       = {Said Taghadouini and Adrien Cavaill\`{e}s and Baptiste Aubertin},
-  year         = {2025},
+  year         = {2026},
   howpublished = {\url{https://huggingface.co/blog/lightonai/lightonocr-2}}
 }
 ```
