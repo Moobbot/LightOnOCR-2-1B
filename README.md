@@ -31,9 +31,13 @@ tags:
 
 **Best OCR model (recommended).** LightOnOCR-2-1B is our flagship OCR model, refined with RLVR training for maximum accuracy. We recommend this variant for most OCR tasks.
 
+## About LightOnOCR-2
+
+LightOnOCR-2 is an efficient end-to-end 1B-parameter vision-language model for converting documents (PDFs, scans, images) into clean, naturally ordered text without relying on brittle pipelines. This second version is trained on a larger and higher-quality corpus with stronger French, arXiv, and scan coverage, improved LaTeX handling, and cleaner normalization. LightOnOCR-2 achieves state-of-the-art performance on OlmOCR-Bench while being ~9× smaller and significantly faster than competing approaches.
+
 ## Highlights
 
-* ⚡ **Speed:** 5× faster than dots.ocr, 2× faster than PaddleOCR-VL-0.9B, 1.73× faster than DeepSeekOCR
+* ⚡ **Speed:** 3.3× faster than Chandra OCR, 1.7× faster than OlmOCR, 5× faster than dots.ocr, 2× faster than PaddleOCR-VL-0.9B, 1.73× faster than DeepSeekOCR
 * 💸 **Efficiency:** Processes 5.71 pages/s on a single H100 (~493k pages/day) for **<$0.01 per 1,000 pages**
 * 🧠 **End-to-End:** Fully differentiable, no external OCR pipeline
 * 🧾 **Versatile:** Handles tables, receipts, forms, multi-column layouts, and math notation
@@ -41,7 +45,7 @@ tags:
 
 ---
 
-📄 **[Paper](https://huggingface.co/papers/lightonocr-2)** | 📝 **[Blog Post](https://huggingface.co/blog/lightonai/lightonocr-2)** | 🚀 **[Demo](https://huggingface.co/spaces/lightonai/LightOnOCR-2-Demo)** | 📊 **[Dataset](https://huggingface.co/datasets/lightonai/LightOnOCR-mix-0126)**
+📄 **[Paper](https://huggingface.co/papers/lightonocr-2)** | 📝 **[Blog Post](https://huggingface.co/blog/lightonai/lightonocr-2)** | 🚀 **[Demo](https://huggingface.co/spaces/lightonai/LightOnOCR-2-1B-Demo)** | 📊 **[Dataset](https://huggingface.co/datasets/lightonai/LightOnOCR-mix-0126)**
 
 ---
 
@@ -61,7 +65,7 @@ tags:
 ## Benchmarks
 
 <div align="center">
-  <img src="benchmark_placeholder.png" alt="OlmOCR-Bench Results" width="900"/>
+  <img src="benchmark.png" alt="OlmOCR-Bench Results" width="900"/>
 </div>
 
 *See the [paper](https://huggingface.co/papers/lightonocr-2) for full benchmark details and methodology.*
