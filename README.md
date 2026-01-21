@@ -68,7 +68,7 @@ LightOnOCR-2 is an efficient end-to-end 1B-parameter vision-language model for c
   <img src="benchmark.png" alt="OlmOCR-Bench Results" width="900"/>
 </div>
 
-*See the [paper](https://huggingface.co/papers/lightonocr-2) for full benchmark details and methodology.*
+*See the [paper](https://arxiv.org/pdf/2601.14251) for full benchmark details and methodology.*
 
 ---
 
