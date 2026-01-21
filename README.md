@@ -45,7 +45,7 @@ LightOnOCR-2 is an efficient end-to-end 1B-parameter vision-language model for c
 
 ---
 
-📄 **[Paper](https://huggingface.co/papers/lightonocr-2)** | 📝 **[Blog Post](https://huggingface.co/blog/lightonai/lightonocr-2)** | 🚀 **[Demo](https://huggingface.co/spaces/lightonai/LightOnOCR-2-1B-Demo)** | 📊 **[Dataset](https://huggingface.co/datasets/lightonai/LightOnOCR-mix-0126)** | 📊 **[BBox Dataset](https://huggingface.co/datasets/lightonai/LightOnOCR-bbox-mix-0126)** | 📓 **[Finetuning Notebook](https://colab.research.google.com/drive/1WjbsFJZ4vOAAlKtcCauFLn_evo5UBRNa?usp=sharing)**
+📄 **[Paper]( https://arxiv.org/pdf/2601.14251)** | 📝 **[Blog Post](https://huggingface.co/blog/lightonai/lightonocr-2)** | 🚀 **[Demo](https://huggingface.co/spaces/lightonai/LightOnOCR-2-1B-Demo)** | 📊 **[Dataset](https://huggingface.co/datasets/lightonai/LightOnOCR-mix-0126)** | 📊 **[BBox Dataset](https://huggingface.co/datasets/lightonai/LightOnOCR-bbox-mix-0126)** | 📓 **[Finetuning Notebook](https://colab.research.google.com/drive/1WjbsFJZ4vOAAlKtcCauFLn_evo5UBRNa?usp=sharing)**
 
 ---
 
@@ -195,9 +195,9 @@ Apache License 2.0
 
 ```bibtex
 @misc{lightonocr2_2026,
-  title        = {LightOnOCR: End-to-End, Multilingual, Efficient, State-of-the-Art Vision-Language Model for OCR},
+  title        = {LightOnOCR: A 1B End-to-End Multilingual Vision-Language Model for State-of-the-Art OCR},
   author       = {Said Taghadouini and Adrien Cavaill\`{e}s and Baptiste Aubertin},
   year         = {2026},
-  howpublished = {\url{https://huggingface.co/blog/lightonai/lightonocr-2}}
+  howpublished = {\url{https://arxiv.org/pdf/2601.14251}}
 }
 ```
