@@ -74,10 +74,10 @@ LightOnOCR-2 is an efficient end-to-end 1B-parameter vision-language model for c
 
 ## Usage with Transformers
 
-> **Note:** LightOnOCR-2 requires transformers installed from source (not yet in a stable release).
+> **Note:** LightOnOCR-2 is avaible in latest transformers release starting from v5.
 
 ```bash
-uv pip install git+https://github.com/huggingface/transformers
+uv pip install transformers # => 5.0.0
 uv pip install pillow pypdfium2
 ```
 
@@ -167,9 +167,8 @@ print(text)
 
 ## Rendering and Preprocessing Tips
 
-* Render PDFs to **PNG** or **JPEG** at a target longest dimension of **1540px**
+* Render PDFs at 200 DPI to images using a target longest dimension of **1540px**
 * Maintain aspect ratio to preserve text geometry
-* Use one image per page; batching supported by vLLM
 
 ---
 
