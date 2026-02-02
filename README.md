@@ -23,25 +23,21 @@ tags:
 - forms
 ---
 
-# LightOnOCR-2-1B
-[![Speed](https://img.shields.io/badge/Speed-5.71%20pages%2Fs-brightgreen)](https://huggingface.co/lightonai/LightOnOCR-2-1B)
-[![Model Size](https://img.shields.io/badge/Model%20Size-1B%20params-orange)](https://huggingface.co/lightonai/LightOnOCR-2-1B)
-[![Demo](https://img.shields.io/badge/🚀%20Demo-Spaces-orange)](https://huggingface.co/spaces/lightonai/LightOnOCR-2-1B-Demo)
-[![License](https://img.shields.io/badge/License-Apache%202.0-green.svg)](https://opensource.org/licenses/Apache-2.0)
-[![SOTA](https://img.shields.io/badge/OlmOCR--Bench-SOTA-gold)](https://huggingface.co/lightonai/LightOnOCR-2-1B)
-[![Transformers](https://img.shields.io/badge/🤗%20Transformers-supported-yellow)](https://github.com/huggingface/transformers)
-[![vLLM](https://img.shields.io/badge/vLLM-supported-purple)](https://github.com/vllm-project/vllm)
-[![Blog](https://img.shields.io/badge/📝%20Blog-HuggingFace-yellow)](https://huggingface.co/blog/lightonai/lightonocr-2)
-[![Dataset](https://img.shields.io/badge/📊%20Dataset-LightOnOCR--mix-blue)](https://huggingface.co/datasets/lightonai/LightOnOCR-mix-0126)
-[![BBox Dataset](https://img.shields.io/badge/📊%20BBox%20Dataset-LightOnOCR--bbox--mix-blue)](https://huggingface.co/datasets/lightonai/LightOnOCR-bbox-mix-0126)
-[![Colab](https://img.shields.io/badge/Finetuning-Notebook-F9AB00?logo=googlecolab)](https://colab.research.google.com/drive/1WjbsFJZ4vOAAlKtcCauFLn_evo5UBRNa?usp=sharing)
-[![Website](https://img.shields.io/badge/LightOn-Website-blue?logo=google-chrome)](https://lighton.ai)
-[![LinkedIn](https://img.shields.io/badge/LightOn-LinkedIn-0A66C2?logo=linkedin)](https://www.linkedin.com/company/lighton/)
-[![X](https://img.shields.io/badge/@LightOnIO-X-black?logo=x)](https://x.com/LightOnIO)
 <div align="center">
   <img src="lightonocr-banner.png" alt="LightOnOCR-2-1B Banner" width="600"/>
 </div>
 
+---
+
+<div align="center">
+
+[![Website](https://img.shields.io/badge/LightOn-Website-blue?logo=google-chrome)](https://lighton.ai)
+[![LinkedIn](https://img.shields.io/badge/LightOn-LinkedIn-0A66C2?logo=linkedin)](https://www.linkedin.com/company/lighton/)
+[![X](https://img.shields.io/badge/@LightOnIO-X-black?logo=x)](https://x.com/LightOnIO)
+
+📄 [Paper](https://arxiv.org/pdf/2601.14251) | 📝 [Blog](https://huggingface.co/blog/lightonai/lightonocr-2) | 🚀 [Demo](https://huggingface.co/spaces/lightonai/LightOnOCR-2-1B-Demo) | 📊 [Dataset](https://huggingface.co/datasets/lightonai/LightOnOCR-mix-0126) | 📓 [Finetuning](https://colab.research.google.com/drive/1WjbsFJZ4vOAAlKtcCauFLn_evo5UBRNa?usp=sharing)
+
+</div>
 
 # LightOnOCR-2-1B
 **Best OCR model .** LightOnOCR-2-1B is **[LightOn's](https://lighton.ai)** flagship OCR model, refined with RLVR training for maximum accuracy. We recommend this variant for most OCR tasks.
