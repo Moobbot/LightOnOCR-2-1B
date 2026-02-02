@@ -23,13 +23,29 @@ tags:
 - forms
 ---
 
+# LightOnOCR-2-1B
+[![Speed](https://img.shields.io/badge/Speed-5.71%20pages%2Fs-brightgreen)](https://huggingface.co/lightonai/LightOnOCR-2-1B)
+[![Model Size](https://img.shields.io/badge/Model%20Size-1B%20params-orange)](https://huggingface.co/lightonai/LightOnOCR-2-1B)
+[![Demo](https://img.shields.io/badge/🚀%20Demo-Spaces-orange)](https://huggingface.co/spaces/lightonai/LightOnOCR-2-1B-Demo)
+[![License](https://img.shields.io/badge/License-Apache%202.0-green.svg)](https://opensource.org/licenses/Apache-2.0)
+[![SOTA](https://img.shields.io/badge/OlmOCR--Bench-SOTA-gold)](https://huggingface.co/lightonai/LightOnOCR-2-1B)
+[![Transformers](https://img.shields.io/badge/🤗%20Transformers-supported-yellow)](https://github.com/huggingface/transformers)
+[![vLLM](https://img.shields.io/badge/vLLM-supported-purple)](https://github.com/vllm-project/vllm)
+[![Blog](https://img.shields.io/badge/📝%20Blog-HuggingFace-yellow)](https://huggingface.co/blog/lightonai/lightonocr-2)
+[![Dataset](https://img.shields.io/badge/📊%20Dataset-LightOnOCR--mix-blue)](https://huggingface.co/datasets/lightonai/LightOnOCR-mix-0126)
+[![BBox Dataset](https://img.shields.io/badge/📊%20BBox%20Dataset-LightOnOCR--bbox--mix-blue)](https://huggingface.co/datasets/lightonai/LightOnOCR-bbox-mix-0126)
+[![Colab](https://img.shields.io/badge/Finetuning-Notebook-F9AB00?logo=googlecolab)](https://colab.research.google.com/drive/1WjbsFJZ4vOAAlKtcCauFLn_evo5UBRNa?usp=sharing)
+[![arXiv](https://img.shields.io/badge/arXiv-2412.13663-b31b1b.svg)](https://arxiv.org/abs/2412.13663)
+[![Website](https://img.shields.io/badge/LightOn-Website-blue?logo=google-chrome)](https://lighton.ai)
+[![LinkedIn](https://img.shields.io/badge/LightOn-LinkedIn-0A66C2?logo=linkedin)](https://www.linkedin.com/company/lighton/)
+[![X](https://img.shields.io/badge/@LightOnIO-X-black?logo=x)](https://x.com/LightOnIO)
 <div align="center">
   <img src="lightonocr-banner.png" alt="LightOnOCR-2-1B Banner" width="600"/>
 </div>
 
-# LightOnOCR-2-1B
 
-**Best OCR model .** LightOnOCR-2-1B is our flagship OCR model, refined with RLVR training for maximum accuracy. We recommend this variant for most OCR tasks.
+# LightOnOCR-2-1B
+**Best OCR model .** LightOnOCR-2-1B is **[LightOn's](https://lighton.ai)** flagship OCR model, refined with RLVR training for maximum accuracy. We recommend this variant for most OCR tasks.
 
 ## About LightOnOCR-2
 
@@ -45,7 +61,7 @@ LightOnOCR-2 is an efficient end-to-end 1B-parameter vision-language model for c
 
 ---
 
-📄 **[Paper]( https://arxiv.org/pdf/2601.14251)** | 📝 **[Blog Post](https://huggingface.co/blog/lightonai/lightonocr-2)** | 🚀 **[Demo](https://huggingface.co/spaces/lightonai/LightOnOCR-2-1B-Demo)** | 📊 **[Dataset](https://huggingface.co/datasets/lightonai/LightOnOCR-mix-0126)** | 📊 **[BBox Dataset](https://huggingface.co/datasets/lightonai/LightOnOCR-bbox-mix-0126)** | 📓 **[Finetuning Notebook](https://colab.research.google.com/drive/1WjbsFJZ4vOAAlKtcCauFLn_evo5UBRNa?usp=sharing)**
+📄 **[Paper]( https://arxiv.org/pdf/2601.14251)** | 📝 **[Blog Post](https://huggingface.co/blog/lightonai/lightonocr-2)** | 🚀 **[Demo](https://huggingface.co/spaces/lightonai/LightOnOCR-2-1B-Demo)** | 📊 **[Dataset](https://huggingface.co/datasets/lightonai/LightOnOCR-mix-0126)** | 📊 **[BBox Dataset](https://huggingface.co/datasets/lightonai/LightOnOCR-bbox-mix-0126)** | 📓 **[Finetuning Notebook](https://colab.research.google.com/drive/1WjbsFJZ4vOAAlKtcCauFLn_evo5UBRNa?usp=sharing)** | **[LightOn blog entry](https://www.lighton.ai/lighton-blogs/lighton-opens-a-new-field-for-ai-with-lightonocr-2-document-intelligence)**
 
 ---
 
@@ -197,6 +213,9 @@ Apache License 2.0
   title        = {LightOnOCR: A 1B End-to-End Multilingual Vision-Language Model for State-of-the-Art OCR},
   author       = {Said Taghadouini and Adrien Cavaill\`{e}s and Baptiste Aubertin},
   year         = {2026},
-  howpublished = {\url{https://arxiv.org/pdf/2601.14251}}
+  howpublished = {\url{https://arxiv.org/abs/2601.14251}}
 }
+
+[![Downloads](https://img.shields.io/badge/dynamic/json?url=https://huggingface.co/api/models/lightonai/LightOnOCR-2-1B&query=downloads&label=Downloads&color=blue)](https://huggingface.co/lightonai/LightOnOCR-2-1B)
+[![EU](https://img.shields.io/badge/🇪🇺%20Made%20in-Europe-blue)](https://huggingface.co/lightonai)
 ```
