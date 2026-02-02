@@ -214,7 +214,7 @@ Apache License 2.0
   year         = {2026},
   howpublished = {\url{https://arxiv.org/abs/2601.14251}}
 }
+```
 
 [![Downloads](https://img.shields.io/badge/dynamic/json?url=https://huggingface.co/api/models/lightonai/LightOnOCR-2-1B&query=downloads&label=Downloads&color=blue)](https://huggingface.co/lightonai/LightOnOCR-2-1B)
 [![EU](https://img.shields.io/badge/🇪🇺%20Made%20in-Europe-blue)](https://huggingface.co/lightonai)
-```
