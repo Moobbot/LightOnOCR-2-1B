@@ -35,7 +35,6 @@ tags:
 [![Dataset](https://img.shields.io/badge/📊%20Dataset-LightOnOCR--mix-blue)](https://huggingface.co/datasets/lightonai/LightOnOCR-mix-0126)
 [![BBox Dataset](https://img.shields.io/badge/📊%20BBox%20Dataset-LightOnOCR--bbox--mix-blue)](https://huggingface.co/datasets/lightonai/LightOnOCR-bbox-mix-0126)
 [![Colab](https://img.shields.io/badge/Finetuning-Notebook-F9AB00?logo=googlecolab)](https://colab.research.google.com/drive/1WjbsFJZ4vOAAlKtcCauFLn_evo5UBRNa?usp=sharing)
-[![arXiv](https://img.shields.io/badge/arXiv-2412.13663-b31b1b.svg)](https://arxiv.org/abs/2412.13663)
 [![Website](https://img.shields.io/badge/LightOn-Website-blue?logo=google-chrome)](https://lighton.ai)
 [![LinkedIn](https://img.shields.io/badge/LightOn-LinkedIn-0A66C2?logo=linkedin)](https://www.linkedin.com/company/lighton/)
 [![X](https://img.shields.io/badge/@LightOnIO-X-black?logo=x)](https://x.com/LightOnIO)
