@@ -58,8 +58,16 @@
 - dataset:
     id: allenai/olmOCR-bench
     task_id: headers_footers
-  value: 19.74
+  value: 19.7
   notes: "Instead of removing headers and footers, our model is trained for full-page transcription and explicitly rewards their presence (via flipped RLVR tests), which lowers this score under the original benchmark scoring."
+  source:
+    url: https://huggingface.co/papers/2601.14251
+    name: LightOnOCR technical report
+    user: staghado
+- dataset:
+    id: allenai/olmOCR-bench
+    task_id: baseline
+  value: 99.6
   source:
     url: https://huggingface.co/papers/2601.14251
     name: LightOnOCR technical report
