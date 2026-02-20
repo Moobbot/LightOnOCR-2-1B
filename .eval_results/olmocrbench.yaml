@@ -1,8 +1,16 @@
 - dataset:
     id: allenai/olmOCR-bench
+    task_id: overall
+  value: 83.2
+  notes: "Excluding Headers & Footers category"
+  source:
+    url: https://huggingface.co/papers/2601.14251
+    name: LightOnOCR technical report
+    user: nielsr
+- dataset:
+    id: allenai/olmOCR-bench
     task_id: arxiv_math
   value: 89.6
-  date: '2025-10-22'
   source:
     url: https://huggingface.co/papers/2601.14251
     name: LightOnOCR technical report
@@ -11,7 +19,6 @@
     id: allenai/olmOCR-bench
     task_id: old_scans_math
   value: 85.6 
-  date: '2025-10-22'
   source:
     url: https://huggingface.co/papers/2601.14251
     name: LightOnOCR technical report
@@ -20,7 +27,6 @@
     id: allenai/olmOCR-bench
     task_id: table_tests
   value: 89.0
-  date: '2025-10-22'
   source:
     url: https://huggingface.co/papers/2601.14251
     name: LightOnOCR technical report
@@ -29,7 +35,6 @@
     id: allenai/olmOCR-bench
     task_id: old_scans
   value: 42.2
-  date: '2025-10-22'
   source:
     url: https://huggingface.co/papers/2601.14251
     name: LightOnOCR technical report
@@ -38,7 +43,6 @@
     id: allenai/olmOCR-bench
     task_id: multi_column
   value: 84.8
-  date: '2025-10-22'
   source:
     url: https://huggingface.co/papers/2601.14251
     name: LightOnOCR technical report
@@ -47,7 +51,6 @@
     id: allenai/olmOCR-bench
     task_id: long_tiny_text
   value: 91.4
-  date: '2025-10-22'
   source:
     url: https://huggingface.co/papers/2601.14251
     name: LightOnOCR technical report
