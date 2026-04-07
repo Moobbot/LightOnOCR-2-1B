@@ -2,7 +2,7 @@
     id: allenai/olmOCR-bench
     task_id: overall
   value: 83.2
-  notes: "Excluding Headers & Footers category"
+  notes: "H&F rewards omission, not transcription thus a model that outputs nothing scores perfectly. Excluded to keep Overall focused on real OCR quality."
   source:
     url: https://huggingface.co/papers/2601.14251
     name: LightOnOCR technical report
