@@ -1,0 +1,60 @@
+- dataset:
+    id: llamaindex/ParseBench
+    task_id: mean
+  value: 48.0
+  date: '2026-04-14'
+  source:
+    url: https://huggingface.co/datasets/llamaindex/ParseBench
+    name: ParseBench
+    user: boyang-runllama
+  notes: "Pipeline name: lightonocr_vllm"
+- dataset:
+    id: llamaindex/ParseBench
+    task_id: text_content
+  value: 87.8
+  date: '2026-04-14'
+  source:
+    url: https://huggingface.co/datasets/llamaindex/ParseBench
+    name: ParseBench
+    user: boyang-runllama
+  notes: "Pipeline name: lightonocr_vllm"
+- dataset:
+    id: llamaindex/ParseBench
+    task_id: text_formatting
+  value: 63.2
+  date: '2026-04-14'
+  source:
+    url: https://huggingface.co/datasets/llamaindex/ParseBench
+    name: ParseBench
+    user: boyang-runllama
+  notes: "Pipeline name: lightonocr_vllm"
+- dataset:
+    id: llamaindex/ParseBench
+    task_id: layout
+  value: 0.0
+  date: '2026-04-14'
+  source:
+    url: https://huggingface.co/datasets/llamaindex/ParseBench
+    name: ParseBench
+    user: boyang-runllama
+  notes: "Pipeline name: lightonocr_vllm"
+- dataset:
+    id: llamaindex/ParseBench
+    task_id: chart
+  value: 13.5
+  date: '2026-04-14'
+  source:
+    url: https://huggingface.co/datasets/llamaindex/ParseBench
+    name: ParseBench
+    user: boyang-runllama
+  notes: "Pipeline name: lightonocr_vllm"
+- dataset:
+    id: llamaindex/ParseBench
+    task_id: table
+  value: 75.5
+  date: '2026-04-14'
+  source:
+    url: https://huggingface.co/datasets/llamaindex/ParseBench
+    name: ParseBench
+    user: boyang-runllama
+  notes: "Pipeline name: lightonocr_vllm"
