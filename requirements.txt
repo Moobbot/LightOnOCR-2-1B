@@ -1,0 +1,21 @@
+# ============================================================
+# LightOnOCR-2-1B Pipeline Requirements
+# ============================================================
+# Cài đặt theo thứ tự dưới đây:
+#
+# 1. PyTorch (cài riêng trước với lệnh conda/pip bên dưới)
+# 2. pip install -r requirements.txt
+# ============================================================
+
+# Core ML
+torch
+
+# LightOnOCR requires transformers >= 5.0 (dev branch includes LightOnOcr classes)
+git+https://github.com/huggingface/transformers.git
+
+# --- Image handling ---
+Pillow
+
+# --- Data export ---
+pandas
+openpyxl
