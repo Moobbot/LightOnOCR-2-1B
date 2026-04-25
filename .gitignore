@@ -1,0 +1,36 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# .gitignore — LightOnOCR-2-1B
+#
+# Model weights (*.safetensors, tokenizer.json...) được track bằng Git LFS
+# thông qua .gitattributes — KHÔNG liệt kê ở đây.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Output pipeline
+outputs/
+
+# HuggingFace evaluation cache
+.eval_results/
+
+# Python bytecode
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Build / dist
+*.egg-info/
+dist/
+build/
+
+# Conda / venv
+.env
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.code-workspace
+
+# Temp / log
+*.tmp
+*.log
