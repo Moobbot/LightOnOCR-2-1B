@@ -33,6 +33,7 @@ from PIL import Image
 
 from pipeline.model import get_model
 from pipeline.ocr_engine import extract_text, is_blank_page
+from pipeline.pdf_renderer import render_all_pages, HAS_PDFIUM
 from pipeline.table_parser import extract_structured_data
 from pipeline.exporter import save_json, json_to_excel
 
@@ -43,44 +44,6 @@ IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".bmp", ".webp", ".tiff", ".tif"}
 PDF_EXTENSIONS   = {".pdf"}
 ALL_EXTENSIONS   = IMAGE_EXTENSIONS | PDF_EXTENSIONS
 
-
-# --------------------------------------------------------------------------
-# PDF rendering (optional — skip gracefully if pypdfium2 not installed)
-# --------------------------------------------------------------------------
-try:
-    import pypdfium2 as pdfium
-    HAS_PDFIUM = True
-except ImportError:
-    HAS_PDFIUM = False
-
-
-def render_pdf_pages(pdf_path: str, max_resolution: int = 1540, scale: float = 2.77) -> List[Tuple[Image.Image, str]]:
-    """
-    Render all pages of a PDF to PIL Images.
-    Returns list of (image, label) where label = "filename_page_N.pdf".
-    """
-    if not HAS_PDFIUM:
-        print("  [WARN] pypdfium2 not installed — skipping PDF. Install: pip install pypdfium2")
-        return []
-
-    pdf = pdfium.PdfDocument(pdf_path)
-    total_pages = len(pdf)
-    stem = Path(pdf_path).stem
-    pages = []
-
-    for i in range(total_pages):
-        page = pdf[i]
-        w, h = page.get_size()
-        pixel_w = w * scale
-        pixel_h = h * scale
-        resize_factor = min(1.0, max_resolution / pixel_w, max_resolution / pixel_h)
-        target_scale = scale * resize_factor
-        image = page.render(scale=target_scale, rev_byteorder=True).to_pil()
-        label = f"{stem}_page_{i+1:03d}.pdf"
-        pages.append((image, label))
-
-    pdf.close()
-    return pages
 
 
 # --------------------------------------------------------------------------
@@ -250,7 +213,7 @@ def main():
         # ── PDF: render each page ─────────────────────────────────────────
         if suffix in PDF_EXTENSIONS:
             try:
-                pages = render_pdf_pages(file_path)
+                pages = render_all_pages(file_path)
             except Exception as e:
                 print(f"         ↳ [ERROR] Không mở được PDF: {e}")
                 continue

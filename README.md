@@ -1,216 +1,219 @@
----
-license: apache-2.0
-pipeline_tag: image-text-to-text
-language:
-- en
-- fr
-- de
-- es
-- it
-- nl
-- pt
-- sv
-- da
-- zh
-- ja
-library_name: transformers
-tags:
-- ocr
-- document-understanding
-- vision-language
-- pdf
-- tables
-- forms
----
+# LightOnOCR-2-1B — Local Pipeline
 
-<div align="center">
-  <img src="lightonocr-banner.png" alt="LightOnOCR-2-1B Banner" width="600"/>
-</div>
+> Bản README này mô tả pipeline **local** được xây dựng trên nền model **LightOnOCR-2-1B** của [LightOn AI](https://lighton.ai).
+> Model gốc: [lightonai/LightOnOCR-2-1B](https://huggingface.co/lightonai/LightOnOCR-2-1B)
 
 ---
 
-<div align="center">
+## Tổng quan
 
-[![Website](https://img.shields.io/badge/LightOn-Website-blue?logo=google-chrome)](https://lighton.ai)
-[![LinkedIn](https://img.shields.io/badge/LightOn-LinkedIn-0A66C2?logo=linkedin)](https://www.linkedin.com/company/lighton/)
-[![X](https://img.shields.io/badge/@LightOnIO-X-black?logo=x)](https://x.com/LightOnIO)
-
-📄 [Paper](https://arxiv.org/pdf/2601.14251) | 📝 [Blog](https://huggingface.co/blog/lightonai/lightonocr-2) | 🚀 [Demo](https://huggingface.co/spaces/lightonai/LightOnOCR-2-1B-Demo) | 📊 [Dataset](https://huggingface.co/datasets/lightonai/LightOnOCR-mix-0126) | 📓 [Finetuning](https://colab.research.google.com/drive/1WjbsFJZ4vOAAlKtcCauFLn_evo5UBRNa?usp=sharing)
-
-</div>
-
-# LightOnOCR-2-1B
-**Best OCR model .** LightOnOCR-2-1B is **[LightOn's](https://lighton.ai)** flagship OCR model, refined with RLVR training for maximum accuracy. We recommend this variant for most OCR tasks.
-
-## About LightOnOCR-2
-
-LightOnOCR-2 is an efficient end-to-end 1B-parameter vision-language model for converting documents (PDFs, scans, images) into clean, naturally ordered text without relying on brittle pipelines. This second version is trained on a larger and higher-quality corpus with stronger French, arXiv, and scan coverage, improved LaTeX handling, and cleaner normalization. LightOnOCR-2 achieves state-of-the-art performance on OlmOCR-Bench while being ~9× smaller and significantly faster than competing approaches.
-
-## Highlights
-
-* ⚡ **Speed:** 3.3× faster than Chandra OCR, 1.7× faster than OlmOCR, 5× faster than dots.ocr, 2× faster than PaddleOCR-VL-0.9B, 1.73× faster than DeepSeekOCR
-* 💸 **Efficiency:** Processes 5.71 pages/s on a single H100 (~493k pages/day) for **<$0.01 per 1,000 pages**
-* 🧠 **End-to-End:** Fully differentiable, no external OCR pipeline
-* 🧾 **Versatile:** Handles tables, receipts, forms, multi-column layouts, and math notation
-* 📍 **Image detection:** Predicts bounding boxes for embedded images (bbox variants)
+Pipeline OCR cục bộ dùng để:
+- Trích xuất văn bản từ **ảnh** (JPG, PNG, BMP, WEBP) và **file PDF**
+- Tự động parse **bảng HTML/Markdown** và **cặp Key-Value**
+- Xuất kết quả ra **JSON** và **Excel (.xlsx)**
+- Chạy hoàn toàn **offline** trên máy local (GPU CUDA hoặc CPU)
 
 ---
 
-📄 **[Paper]( https://arxiv.org/pdf/2601.14251)** | 📝 **[Blog Post](https://huggingface.co/blog/lightonai/lightonocr-2)** | 🚀 **[Demo](https://huggingface.co/spaces/lightonai/LightOnOCR-2-1B-Demo)** | 📊 **[Dataset](https://huggingface.co/datasets/lightonai/LightOnOCR-mix-0126)** | 📊 **[BBox Dataset](https://huggingface.co/datasets/lightonai/LightOnOCR-bbox-mix-0126)** | 📓 **[Finetuning Notebook](https://colab.research.google.com/drive/1WjbsFJZ4vOAAlKtcCauFLn_evo5UBRNa?usp=sharing)** | **[LightOn blog entry](https://www.lighton.ai/lighton-blogs/lighton-opens-a-new-field-for-ai-with-lightonocr-2-document-intelligence)**
+## Cấu trúc dự án
 
----
-
-## Model Variants
-
-| Variant | Description |
-|---------|-------------|
-| **[LightOnOCR-2-1B](https://huggingface.co/lightonai/LightOnOCR-2-1B)** | Best OCR model  |
-| **[LightOnOCR-2-1B-base](https://huggingface.co/lightonai/LightOnOCR-2-1B-base)** | Base model, ideal for fine-tuning |
-| **[LightOnOCR-2-1B-bbox](https://huggingface.co/lightonai/LightOnOCR-2-1B-bbox)** | Best model with image bounding boxes |
-| **[LightOnOCR-2-1B-bbox-base](https://huggingface.co/lightonai/LightOnOCR-2-1B-bbox-base)** | Base bbox model, ideal for fine-tuning |
-| **[LightOnOCR-2-1B-ocr-soup](https://huggingface.co/lightonai/LightOnOCR-2-1B-ocr-soup)** | Merged variant for extra robustness |
-| **[LightOnOCR-2-1B-bbox-soup](https://huggingface.co/lightonai/LightOnOCR-2-1B-bbox-soup)** | Merged variant: OCR + bbox combined |
-
----
-
-## Benchmarks
-
-<div align="center">
-  <img src="benchmark.png" alt="OlmOCR-Bench Results" width="900"/>
-</div>
-
-*See the [paper](https://arxiv.org/pdf/2601.14251) for full benchmark details and methodology.*
-
----
-
-## Usage with Transformers
-
-> **Note:** LightOnOCR-2 is avaible in latest transformers release starting from v5.
-
-```bash
-uv pip install transformers # => 5.0.0
-uv pip install pillow pypdfium2
 ```
-
-```python
-import torch
-from transformers import LightOnOcrForConditionalGeneration, LightOnOcrProcessor
-
-device = "mps" if torch.backends.mps.is_available() else "cuda" if torch.cuda.is_available() else "cpu"
-dtype = torch.float32 if device == "mps" else torch.bfloat16
-
-model = LightOnOcrForConditionalGeneration.from_pretrained("lightonai/LightOnOCR-2-1B", torch_dtype=dtype).to(device)
-processor = LightOnOcrProcessor.from_pretrained("lightonai/LightOnOCR-2-1B")
-
-url = "https://huggingface.co/datasets/hf-internal-testing/fixtures_ocr/resolve/main/SROIE-receipt.jpeg"
-
-conversation = [{"role": "user", "content": [{"type": "image", "url": url}]}]
-
-inputs = processor.apply_chat_template(
-    conversation,
-    add_generation_prompt=True,
-    tokenize=True,
-    return_dict=True,
-    return_tensors="pt",
-)
-inputs = {k: v.to(device=device, dtype=dtype) if v.is_floating_point() else v.to(device) for k, v in inputs.items()}
-
-output_ids = model.generate(**inputs, max_new_tokens=1024)
-generated_ids = output_ids[0, inputs["input_ids"].shape[1]:]
-output_text = processor.decode(generated_ids, skip_special_tokens=True)
-print(output_text)
+LightOnOCR-2-1B/
+│
+├── pipeline/                   # Thư viện xử lý lõi
+│   ├── __init__.py
+│   ├── model.py                # Load model (singleton, auto device)
+│   ├── ocr_engine.py           # OCR inference + blank page detection
+│   ├── pdf_renderer.py         # Render PDF → PIL Image (pypdfium2)
+│   ├── table_parser.py         # Parse HTML table / Markdown table / text lines / KV
+│   └── exporter.py             # Xuất JSON và Excel (4 bước rõ ràng)
+│
+├── demo.py                     # Giao diện web Gradio (chạy local)
+├── run.py                      # CLI batch processor
+├── test_export.py              # Test nhanh: re-parse JSON → Excel
+│
+├── setup_env.bat               # Cài đặt môi trường Conda (Windows)
+├── requirements.txt            # Danh sách thư viện Python
+│
+├── app.py                      # (HuggingFace Spaces — không dùng local)
+└── [Model files]               # model.safetensors, tokenizer.json, config.json...
 ```
 
 ---
 
-## Usage with vLLM
+## Cài đặt môi trường
 
-```bash
-vllm serve lightonai/LightOnOCR-2-1B \
-    --limit-mm-per-prompt '{"image": 1}' --mm-processor-cache-gb 0 --no-enable-prefix-caching
+### Yêu cầu
+- Python 3.10+
+- Conda (Miniconda / Anaconda)
+- GPU NVIDIA với CUDA 12.x *(khuyến nghị, CPU cũng chạy được nhưng chậm)*
+
+### Bước 1 — Tạo môi trường
+
+```powershell
+conda create -n extract-pdf python=3.10 -y
+conda activate extract-pdf
 ```
 
-```python
-import base64
-import requests
-import pypdfium2 as pdfium
-import io
+### Bước 2 — Cài PyTorch (CUDA 12.1)
 
-ENDPOINT = "http://localhost:8000/v1/chat/completions"
-MODEL = "lightonai/LightOnOCR-2-1B"
+```powershell
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+```
 
-# Download PDF from arXiv
-pdf_url = "https://arxiv.org/pdf/2412.13663"
-pdf_data = requests.get(pdf_url).content
+### Bước 3 — Cài các thư viện còn lại
 
-# Open PDF and convert first page to image
-pdf = pdfium.PdfDocument(pdf_data)
-page = pdf[0]
-# Render at 200 DPI (scale factor = 200/72 ≈ 2.77)
-pil_image = page.render(scale=2.77).to_pil()
+```powershell
+pip install -r requirements.txt
+```
 
-# Convert to base64
-buffer = io.BytesIO()
-pil_image.save(buffer, format="PNG")
-image_base64 = base64.b64encode(buffer.getvalue()).decode('utf-8')
+### Kiểm tra
 
-# Make request
-payload = {
-    "model": MODEL,
-    "messages": [{
-        "role": "user",
-        "content": [{
-            "type": "image_url",
-            "image_url": {"url": f"data:image/png;base64,{image_base64}"}
-        }]
-    }],
-    "max_tokens": 4096,
-    "temperature": 0.2,
-    "top_p": 0.9,
-}
-
-response = requests.post(ENDPOINT, json=payload)
-text = response.json()['choices'][0]['message']['content']
-print(text)
+```powershell
+python -c "import torch; print('CUDA:', torch.cuda.is_available())"
 ```
 
 ---
 
-## Rendering and Preprocessing Tips
+## Sử dụng
 
-* Render PDFs at 200 DPI to images using a target longest dimension of **1540px**
-* Maintain aspect ratio to preserve text geometry
+### 1. Web UI (Gradio)
 
----
-
-## Fine-tuning
-
-LightOnOCR-2 is fully differentiable and supports:
-
-* LoRA fine-tuning
-* Domain adaptation (receipts, scientific articles, forms, etc.)
-* Multilingual fine-tuning with task-specific corpora
-
-For fine-tuning, we recommend starting with the **[LightOnOCR-2-1B-base](https://huggingface.co/lightonai/LightOnOCR-2-1B-base)** variant.
-
----
-
-## License
-
-Apache License 2.0
-
----
-
-## Citation
-
-```bibtex
-@misc{lightonocr2_2026,
-  title        = {LightOnOCR: A 1B End-to-End Multilingual Vision-Language Model for State-of-the-Art OCR},
-  author       = {Said Taghadouini and Adrien Cavaill\`{e}s and Baptiste Aubertin},
-  year         = {2026},
-  howpublished = {\url{https://arxiv.org/abs/2601.14251}}
-}
+```powershell
+conda activate extract-pdf
+cd LightOnOCR-2-1B
+python demo.py
 ```
 
-[![Downloads](https://img.shields.io/badge/dynamic/json?url=https://huggingface.co/api/models/lightonai/LightOnOCR-2-1B&query=downloads&label=Downloads&color=blue)](https://huggingface.co/lightonai/LightOnOCR-2-1B)
-[![EU](https://img.shields.io/badge/🇪🇺%20Made%20in-Europe-blue)](https://huggingface.co/lightonai)
+Mở trình duyệt tại **http://localhost:7860**
+
+**Tính năng:**
+- Upload ảnh hoặc PDF (có slider chọn trang)
+- OCR → hiển thị văn bản rendered (Markdown/bảng/LaTeX)
+- Raw text, JSON cấu trúc, tải xuống `.json` + `.xlsx`
+
+---
+
+### 2. CLI Batch (xử lý hàng loạt)
+
+```powershell
+conda activate extract-pdf
+cd LightOnOCR-2-1B
+
+# Một ảnh
+python run.py --input ..\datasets\Trang000001.jpg
+
+# Một PDF (tất cả trang)
+python run.py --input ..\datasets\document.pdf
+
+# Thư mục (không đệ quy)
+python run.py --input ..\datasets\ --output-dir outputs --output-name batch_01
+
+# Thư mục đệ quy
+python run.py --input ..\datasets\ --recursive --output-name all_results
+
+# Tùy chỉnh token limit
+python run.py --input ..\datasets\ --max-tokens 16384
+```
+
+**Output:** `outputs/<output-name>.json` và `outputs/<output-name>.xlsx`
+
+#### Tham số CLI
+
+| Tham số | Mặc định | Mô tả |
+|---|---|---|
+| `--input` | *(bắt buộc)* | File ảnh, PDF, hoặc thư mục |
+| `--output-dir` | `outputs` | Thư mục lưu kết quả |
+| `--output-name` | `result` | Tên file output (không có extension) |
+| `--max-tokens` | `8192` | Giới hạn token mỗi trang |
+| `--recursive` | False | Quét thư mục đệ quy |
+| `--blank-threshold` | `0.99` | Ngưỡng phát hiện trang trắng |
+| `--no-skip-blank` | False | Không bỏ qua trang trắng |
+
+---
+
+### 3. Test export (không cần OCR lại)
+
+Dùng khi đã có JSON và muốn kiểm tra/xuất lại Excel:
+
+```powershell
+python test_export.py ..\datasets\Trang000001.json
+python test_export.py ..\datasets\Trang000001.json outputs\custom_output.xlsx
+```
+
+---
+
+## Cấu trúc dữ liệu output
+
+### JSON (`OcrResult`)
+
+```json
+[
+  {
+    "filename": "Trang000001.jpg",
+    "ocr_text": "<văn bản OCR thô>",
+    "tables": [
+      {
+        "headers": ["SĐT", "HỌ TÊN", "NGÀY SINH", "..."],
+        "rows": [
+          { "SĐT": "1", "HỌ TÊN": "Nguyễn Văn A", "NGÀY SINH": "01/01/1990", "...": "" }
+        ]
+      }
+    ],
+    "text_lines": [
+      "DANH SÁCH CẤP BẰNG TỐT NGHIỆP",
+      "Số SVTN: 51 SV"
+    ],
+    "kv_pairs": {
+      "Số SVTN": "51 SV"
+    },
+    "table_count": 1
+  }
+]
+```
+
+### Excel (`.xlsx`)
+
+Mỗi **cấu trúc bảng duy nhất** → 1 sheet riêng:
+
+| Kiểu dòng | Màu nền | Nội dung |
+|---|---|---|
+| **Header** | Xanh đậm (#1F4E79) | Tên các cột |
+| **Text metadata** | Xanh nhạt (#EBF3FB, in nghiêng) | Dòng text ngoài bảng (tiêu đề, ghi chú...) |
+| **Dữ liệu bảng** | Trắng | Giá trị từng ô trong bảng |
+
+Ảnh không parse được bảng → sheet `OCR_Raw`.
+
+---
+
+## Kiến trúc pipeline
+
+```
+PIL Image
+    │
+    ▼  pipeline.ocr_engine.extract_text()
+    │   ├── _prepare_inputs()    — tokenize + move to device
+    │   └── model.generate()    — LightOnOCR inference
+    │
+    ▼  pipeline.table_parser.extract_structured_data()
+    │   ├── _parse_html_tables()  — parse <table> HTML
+    │   ├── _parse_markdown_tables() — fallback markdown
+    │   ├── _extract_text_lines() — dòng ngoài bảng
+    │   └── _extract_kv_pairs()   — key: value pairs
+    │
+    ├──▶ pipeline.exporter.save_json()       → .json
+    └──▶ pipeline.exporter.json_to_excel()   → .xlsx
+         ├── Bước 1: _group_by_structure()
+         ├── Bước 2: _build_rows()
+         ├── Bước 3: _write_sheet_to_workbook()
+         └── Bước 4: wb.save()
+```
+
+---
+
+## Lưu ý
+
+- **Model chạy local hoàn toàn** — không cần internet sau khi tải weights
+- **`app.py`** là bản gốc cho HuggingFace Spaces (dùng `spaces`, load từ HF Hub) — không dùng cho local
+- PDF cần cài `pypdfium2`: `pip install pypdfium2`
+- Temperature mặc định `0.2` trong demo UI, `0.0` (deterministic) trong CLI batch

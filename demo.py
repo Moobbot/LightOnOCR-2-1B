@@ -12,20 +12,14 @@ import sys, json, os, tempfile, time, warnings
 warnings.filterwarnings("ignore")
 
 import gradio as gr
-import torch
 from PIL import Image
 
 sys.path.insert(0, ".")
-from pipeline.model import get_model, DEVICE, ATTN_IMPLEMENTATION, LOCAL_MODEL_PATH, DTYPE
-from pipeline.ocr_engine import clean_output_text, is_blank_page
+from pipeline.model import get_model, DEVICE, ATTN_IMPLEMENTATION, LOCAL_MODEL_PATH
+from pipeline.ocr_engine import extract_text, is_blank_page
+from pipeline.pdf_renderer import render_pdf_page, HAS_PDFIUM
 from pipeline.table_parser import extract_structured_data
 from pipeline.exporter import save_json, json_to_excel
-
-try:
-    import pypdfium2 as pdfium
-    HAS_PDFIUM = True
-except ImportError:
-    HAS_PDFIUM = False
 
 _model = None
 _processor = None
@@ -37,31 +31,20 @@ def _ensure_model():
     return _model, _processor
 
 
-# ── PDF ───────────────────────────────────────────────────────────────────────
 
-def render_pdf_page(pdf_path, page_num=1, max_res=1540, scale=2.77):
-    pdf = pdfium.PdfDocument(pdf_path)
-    total = len(pdf)
-    idx = min(max(int(page_num) - 1, 0), total - 1)
-    page = pdf[idx]
-    w, h = page.get_size()
-    rf = min(1.0, max_res / (w * scale), max_res / (h * scale))
-    img = page.render(scale=scale * rf, rev_byteorder=True).to_pil()
-    pdf.close()
-    return img, total, idx + 1
+
+
 
 
 def update_file_preview(file_input):
+    """Cập nhật slider trang PDF và ảnh preview khi upload file."""
     if file_input is None:
         return gr.update(maximum=20, value=1, visible=False), None
     path = file_input if isinstance(file_input, str) else file_input.name
     if path.lower().endswith(".pdf") and HAS_PDFIUM:
         try:
-            pdf = pdfium.PdfDocument(path)
-            n = len(pdf)
-            preview = pdf[0].render(scale=2).to_pil()
-            pdf.close()
-            return gr.update(maximum=n, value=1, visible=True), preview
+            img, total, _ = render_pdf_page(path, page_num=1)
+            return gr.update(maximum=total, value=1, visible=True), img
         except Exception:
             return gr.update(maximum=20, value=1, visible=True), None
     else:
@@ -108,35 +91,18 @@ def run_ocr(file_input, page_slider, temperature, max_tokens):
     except Exception as e:
         return f"❌ Lỗi load model: {e}", "", "", "{}", None, None
 
-    # Tokenize
-    chat = [{"role": "user", "content": [{"type": "image", "url": image}]}]
-    inputs = processor.apply_chat_template(
-        chat, add_generation_prompt=True, tokenize=True,
-        return_dict=True, return_tensors="pt",
-    )
-    inputs = {
-        k: (v.to(device=DEVICE, dtype=DTYPE)
-            if isinstance(v, torch.Tensor) and v.dtype in (torch.float32, torch.float16, torch.bfloat16)
-            else v.to(DEVICE) if isinstance(v, torch.Tensor) else v)
-        for k, v in inputs.items()
-    }
-
-    do_sample = float(temperature) > 0
-    gen_kwargs = dict(
-        **inputs,
-        max_new_tokens=int(max_tokens),
-        temperature=float(temperature) if do_sample else 1.0,
-        use_cache=True,
-        do_sample=do_sample,
-    )
-
-    # Generate
+    # OCR inference — dùng extract_text từ pipeline.ocr_engine
     t0 = time.time()
-    with torch.no_grad():
-        outputs = model.generate(**gen_kwargs)
-    input_len = inputs["input_ids"].shape[1]
-    full_text = processor.decode(outputs[0][input_len:], skip_special_tokens=True)
-    full_text = clean_output_text(full_text)
+    try:
+        do_sample = float(temperature) > 0
+        full_text = extract_text(
+            model, processor, image,
+            max_tokens=int(max_tokens),
+            temperature=float(temperature),
+            do_sample=do_sample,
+        )
+    except Exception as e:
+        return f"❌ Lỗi OCR: {e}", "", "", "{}", None, None
     elapsed = time.time() - t0
 
     # Parse
