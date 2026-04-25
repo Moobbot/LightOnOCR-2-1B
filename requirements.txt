@@ -16,6 +16,9 @@ git+https://github.com/huggingface/transformers.git
 # --- Image handling ---
 Pillow
 
+# --- PDF rendering ---
+pypdfium2
+
 # --- Data export ---
 pandas
 openpyxl
