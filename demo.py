@@ -143,11 +143,13 @@ def run_ocr(file_input, page_slider, temperature, max_tokens):
     fname = os.path.basename(path)
     structured = extract_structured_data(fname, full_text)
     n_tables = structured["table_count"]
-    n_kv = len(structured.get("kv_pairs", {}))
+    n_texts  = len(structured.get("text_lines", []))
+    n_kv     = len(structured.get("kv_pairs", {}))
 
     json_preview = {
-        "tables": structured["tables"],
-        "kv_pairs": structured["kv_pairs"],
+        "tables":     structured["tables"],
+        "text_lines": structured["text_lines"],
+        "kv_pairs":   structured["kv_pairs"],
     }
     json_str = json.dumps(json_preview, ensure_ascii=False, indent=2)
 
@@ -158,7 +160,7 @@ def run_ocr(file_input, page_slider, temperature, max_tokens):
     save_json([structured], json_path)
     json_to_excel([structured], excel_path)
 
-    status = f"✅ {page_info} | {elapsed:.1f}s | bảng={n_tables} | kv={n_kv}"
+    status = f"✅ {page_info} | {elapsed:.1f}s | bảng={n_tables} | text={n_texts} | kv={n_kv}"
     return status, full_text, full_text, json_str, json_path, excel_path
 
 
