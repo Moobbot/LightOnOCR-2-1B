@@ -1,0 +1,19 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# requirements-docker.txt
+# Dùng trong Docker — PyTorch đã có sẵn trong base image pytorch/pytorch
+# ─────────────────────────────────────────────────────────────────────────────
+
+# LightOnOCR requires transformers >= 5.0 (cần cài từ source)
+git+https://github.com/huggingface/transformers.git
+
+# Image handling
+Pillow
+
+# PDF rendering
+pypdfium2
+
+# Data export
+openpyxl
+
+# Web UI
+gradio

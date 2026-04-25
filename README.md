@@ -43,6 +43,28 @@ LightOnOCR-2-1B/
 
 ## Cài đặt môi trường
 
+### Phương án A — Docker (khuyến nghị cho production)
+
+**Yêu cầu:** Docker + [nvidia-container-toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html)
+
+```bash
+# Build image (chỉ copy app code, không copy model weights)
+docker build -f docker/Dockerfile -t lightonocr:latest .
+
+# Chạy Web Demo
+docker compose up demo
+# → Mở http://localhost:7860
+
+# Chạy CLI batch
+docker compose run --rm batch --input /data --output-name result
+```
+
+> **Model weights** được mount từ thư mục hiện tại (`.`) vào `/weights` bên trong container — không bake vào image.
+
+---
+
+### Phương án B — Conda (local development)
+
 ### Yêu cầu
 - Python 3.10+
 - Conda (Miniconda / Anaconda)

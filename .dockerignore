@@ -1,0 +1,40 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# .dockerignore — loại bỏ file khỏi Docker build context
+# Giúp build nhanh hơn, tránh copy model weights (2GB+) vào layer
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Git
+.git/
+.gitattributes
+
+# Model weights (mount runtime, không bake vào image)
+*.safetensors
+tokenizer.json
+tokenizer_config.json
+added_tokens.json
+special_tokens_map.json
+processor_config.json
+generation_config.json
+chat_template.jinja
+config.json
+
+# Assets không cần thiết
+*.png
+*.ttf
+*.md
+benchmark.png
+lightonocr-banner.png
+
+# HuggingFace Spaces version (không dùng trong Docker)
+app.py
+
+# Output / temp
+outputs/
+__pycache__/
+*.pyc
+*.pyd
+*.pyo
+.eval_results/
+
+# Dataset (mount riêng khi cần)
+datasets/

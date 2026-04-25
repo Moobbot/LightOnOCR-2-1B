@@ -1,0 +1,79 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# docker-compose.yml — LightOnOCR-2-1B
+#
+# Services:
+#   demo   — Gradio web UI (mặc định)
+#   batch  — CLI batch processor (chạy bằng profile)
+#
+# Khởi động:
+#   docker compose up demo          # Web UI
+#   docker compose run batch --input /data --output-dir /outputs
+# ─────────────────────────────────────────────────────────────────────────────
+
+name: lightonocr
+
+services:
+
+  # ── Web Demo (Gradio) ─────────────────────────────────────────────────────
+  demo:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    image: lightonocr:latest
+    container_name: lightonocr-demo
+    ports:
+      - "7860:7860"
+    volumes:
+      # Model weights (read-only) — trỏ tới thư mục chứa model files
+      - .:/weights:ro
+      # Kết quả xuất ra host
+      - ./outputs:/app/outputs
+    environment:
+      MODEL_PATH: /weights
+      GRADIO_HOST: "0.0.0.0"
+      GRADIO_PORT: "7860"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7860"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s   # chờ model load xong
+
+  # ── Batch CLI ─────────────────────────────────────────────────────────────
+  # Chạy: docker compose run --rm batch --input /data --output-name result
+  batch:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    image: lightonocr:latest
+    container_name: lightonocr-batch
+    volumes:
+      # Model weights (read-only)
+      - .:/weights:ro
+      # Input data
+      - ./datasets:/data:ro
+      # Output
+      - ./outputs:/app/outputs
+    environment:
+      MODEL_PATH: /weights
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    entrypoint: ["python", "run.py"]
+    # Mặc định xử lý /data, override khi chạy:
+    # docker compose run --rm batch --input /data --output-name batch_01
+    command: ["--input", "/data", "--output-dir", "/app/outputs"]
+    profiles:
+      - batch   # không start khi `docker compose up`

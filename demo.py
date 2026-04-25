@@ -237,16 +237,21 @@ with gr.Blocks(
 
 
 if __name__ == "__main__":
+    # GRADIO_HOST=0.0.0.0 trong Docker để accessible từ bên ngoài container
+    host = os.environ.get("GRADIO_HOST", "localhost")
+    port = int(os.environ.get("GRADIO_PORT", "7860"))
+    in_docker = os.environ.get("GRADIO_HOST") == "0.0.0.0"
+
     print(f"\n{'=' * 50}")
     print(f"  LightOnOCR-2-1B — Demo")
     print(f"  Device : {DEVICE.upper()}")
-    print(f"  URL    : http://localhost:7860")
+    print(f"  URL    : http://{host}:{port}")
     print(f"{'=' * 50}\n")
 
     demo.launch(
-        server_name="localhost",
-        server_port=7860,
+        server_name=host,
+        server_port=port,
         share=False,
-        inbrowser=True,
+        inbrowser=not in_docker,   # không mở browser khi chạy Docker
         ssr_mode=False,
     )

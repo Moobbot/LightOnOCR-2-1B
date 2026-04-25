@@ -7,6 +7,7 @@ Model files are expected in the parent directory of this package
 """
 
 import gc
+import os
 import time
 import torch
 from pathlib import Path
@@ -15,8 +16,11 @@ from transformers import (
     LightOnOcrProcessor,
 )
 
-# Local model path: parent of pipeline/ directory
-LOCAL_MODEL_PATH = str(Path(__file__).parent.parent.resolve())
+# Local model path — có thể override bằng env var MODEL_PATH (dùng trong Docker)
+LOCAL_MODEL_PATH = os.environ.get(
+    "MODEL_PATH",
+    str(Path(__file__).parent.parent.resolve()),
+)
 
 # Device & dtype auto-detection
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
