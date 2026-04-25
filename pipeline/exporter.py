@@ -1,59 +1,50 @@
 """
 pipeline/exporter.py
 
-Export pipeline results to JSON and Excel.
+Export kết quả pipeline ra JSON và Excel.
 
-Excel strategy:
-  - Each unique set of column headers → its own sheet
-  - A "KV_Pairs" sheet collects all key-value fields (filename | key | value)
-  - An "OCR_Raw" sheet collects images where no table/kv was found
-
-Sheet naming:
-  - Sheet name = first 3 header names joined by "_", truncated to 31 chars
-  - Duplicate base names get a numeric suffix (_1, _2, …)
+Excel layout:
+  - Mỗi tập hợp headers duy nhất → 1 sheet riêng
+  - Trong mỗi sheet:
+      • Các dòng text (ngoài bảng) → 1 dòng, cột đầu = filename, cột 2 = nội dung text
+      • Các dòng bảng → đúng theo cột header
+  - Sheet "OCR_Raw": ảnh không có bảng và không có KV nào
 """
 
 import json
 import re
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Tuple
 
-import pandas as pd
+from openpyxl import Workbook
+from openpyxl.styles import Font, PatternFill, Alignment
 
 
-# ---------------------------------------------------------------------------
-# JSON export
-# ---------------------------------------------------------------------------
+# ── JSON ──────────────────────────────────────────────────────────────────────
 
 def save_json(results: List[Dict[str, Any]], output_path: str) -> str:
-    """Save results list to a JSON file. Returns the path."""
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
     with open(output_path, "w", encoding="utf-8") as f:
         json.dump(results, f, ensure_ascii=False, indent=2)
     return output_path
 
 
-# ---------------------------------------------------------------------------
-# Excel helpers
-# ---------------------------------------------------------------------------
+# ── Excel helpers ─────────────────────────────────────────────────────────────
 
 _INVALID_SHEET_CHARS = re.compile(r"[\\/*?\[\]:]")
 
 
-def _sanitize_sheet_name(name: str) -> str:
-    """Strip chars invalid in Excel sheet names and enforce 31-char limit."""
+def _sanitize(name: str) -> str:
     name = _INVALID_SHEET_CHARS.sub("", name).strip()
     return name[:31] if name else "Sheet"
 
 
 def _make_sheet_name(headers: List[str]) -> str:
-    """Generate a human-readable sheet name from column headers."""
     parts = [str(h)[:10] for h in headers[:3]]
-    return _sanitize_sheet_name("_".join(parts)) or "Table"
+    return _sanitize("_".join(parts)) or "Table"
 
 
-def _unique_sheet_name(base: str, existing: Dict[str, Any]) -> str:
-    """Return a unique sheet name by appending _N suffix if needed."""
+def _unique_name(base: str, existing: Dict) -> str:
     if base not in existing:
         return base
     i = 1
@@ -62,90 +53,124 @@ def _unique_sheet_name(base: str, existing: Dict[str, Any]) -> str:
     return f"{base[:28]}_{i}"
 
 
-# ---------------------------------------------------------------------------
-# JSON → Excel conversion
-# ---------------------------------------------------------------------------
+# ── Excel writer ──────────────────────────────────────────────────────────────
+
+_HEADER_FILL = PatternFill(start_color="1F4E79", end_color="1F4E79", fill_type="solid")
+_TEXT_FILL   = PatternFill(start_color="EBF3FB", end_color="EBF3FB", fill_type="solid")
+_HEADER_FONT = Font(bold=True, color="FFFFFF")
+_TEXT_FONT   = Font(italic=True, color="444444")
+
+
+def _write_sheet(ws, full_headers: List[str], rows: List[Dict[str, Any]]):
+    """
+    Ghi một sheet vào workbook.
+    - full_headers: tên cột (đã bao gồm 'filename' ở đầu)
+    - rows: list dict với key '_row_type' = 'text' hoặc 'data'
+    """
+    # Header row
+    ws.append(full_headers)
+    for cell in ws[1]:
+        cell.font = _HEADER_FILL and _HEADER_FONT
+        cell.fill = _HEADER_FILL
+        cell.alignment = Alignment(horizontal="center", vertical="center")
+
+    for row in rows:
+        row_type = row.get("_row_type", "data")
+        if row_type == "text":
+            # Dòng text: filename + nội dung text, các cột khác để trống
+            values = [row.get("filename", ""), row.get("_text", "")]
+            values += [""] * (len(full_headers) - 2)
+            ws.append(values)
+            # Style dòng text
+            for cell in ws[ws.max_row]:
+                cell.fill = _TEXT_FILL
+                cell.font = _TEXT_FONT
+        else:
+            # Dòng dữ liệu bảng
+            ws.append([row.get(h, "") for h in full_headers])
+
+
+# ── Main export function ──────────────────────────────────────────────────────
 
 def json_to_excel(results: List[Dict[str, Any]], output_path: str) -> str:
     """
-    Convert pipeline results to an Excel workbook.
+    Chuyển results sang Excel.
 
-    Sheet layout:
-      - One sheet per unique table column structure
-        (tables with identical headers land in the same sheet)
-      - "KV_Pairs" sheet: all extracted key-value fields
-      - "OCR_Raw" sheet: images with no parsed tables/KVs (fallback)
-
-    Each data row includes a "filename" column as the first column.
+    Mỗi sheet chứa 1 loại cấu trúc bảng:
+      - Dòng xanh nhạt (in nghiêng): text ngoài bảng (metadata)
+      - Dòng trắng: dữ liệu bảng
     """
-    # headers_tuple → sheet_name mapping
-    headers_to_sheet: Dict[Tuple, str] = {}
-    # sheet_name → list of row dicts
-    sheets: Dict[str, List[Dict[str, Any]]] = {}
+    wb = Workbook()
+    default_sheet = wb.active
+    wb.remove(default_sheet)
 
-    kv_rows: List[Dict[str, str]] = []
-    raw_rows: List[Dict[str, str]] = []
+    # Map: headers_tuple → sheet_name
+    headers_to_sheet: Dict[Tuple, str] = {}
+    # Map: sheet_name → (full_headers, [rows])
+    sheets: Dict[str, Any] = {}
+
+    raw_rows: List[Dict] = []   # fallback khi không có bảng
 
     for result in results:
-        filename = result.get("filename", "unknown")
-        tables: List[Dict[str, Any]] = result.get("tables", [])
-        kv_pairs: Dict[str, str] = result.get("kv_pairs", {})
-        ocr_text: str = result.get("ocr_text", "")
+        filename   = result.get("filename", "unknown")
+        tables     = result.get("tables", [])
+        text_lines = result.get("text_lines", [])
+        ocr_text   = result.get("ocr_text", "")
 
-        # --- KV pairs ---
-        for key, value in kv_pairs.items():
-            kv_rows.append({"filename": filename, "field": key, "value": value})
+        if not tables:
+            # Không parse được bảng → đưa vào sheet OCR_Raw
+            raw_rows.append({"filename": filename, "ocr_text": ocr_text})
+            continue
 
-        # --- Tables ---
         for table in tables:
             headers: List[str] = table.get("headers", [])
-            rows: List[Dict[str, Any]] = table.get("rows", [])
-            if not headers or not rows:
+            rows: List[Dict]   = table.get("rows", [])
+            if not headers:
                 continue
 
-            headers_key = tuple(headers)
+            hkey = tuple(headers)
+            if hkey not in headers_to_sheet:
+                sname = _unique_name(_make_sheet_name(headers), sheets)
+                headers_to_sheet[hkey] = sname
+                full_headers = ["filename", "_text_content"] + headers
+                sheets[sname] = {"full_headers": full_headers, "rows": []}
 
-            if headers_key not in headers_to_sheet:
-                base_name = _make_sheet_name(headers)
-                sheet_name = _unique_sheet_name(base_name, sheets)
-                headers_to_sheet[headers_key] = sheet_name
-                sheets[sheet_name] = []
+            sname = headers_to_sheet[hkey]
+            full_headers = sheets[sname]["full_headers"]
 
-            sheet_name = headers_to_sheet[headers_key]
+            # Thêm text lines trước (mỗi dòng = 1 row loại "text")
+            for line in text_lines:
+                sheets[sname]["rows"].append({
+                    "_row_type": "text",
+                    "filename": filename,
+                    "_text": line,
+                })
+
+            # Thêm dữ liệu bảng
             for row in rows:
-                enriched = {"filename": filename, **row}
-                sheets[sheet_name].append(enriched)
+                enriched = {"_row_type": "data", "filename": filename, "_text_content": "", **row}
+                sheets[sname]["rows"].append(enriched)
 
-        # --- Fallback: no tables and no KV pairs ---
-        if not tables and not kv_pairs:
-            raw_rows.append({"filename": filename, "ocr_text": ocr_text})
+    # Ghi các sheet bảng
+    for sname, info in sheets.items():
+        ws = wb.create_sheet(title=sname[:31])
+        _write_sheet(ws, info["full_headers"], info["rows"])
 
-    # --- Build KV sheet ---
-    if kv_rows:
-        kv_sheet = _unique_sheet_name("KV_Pairs", sheets)
-        sheets[kv_sheet] = kv_rows
-
-    # --- Build Raw sheet ---
+    # Sheet OCR_Raw (fallback)
     if raw_rows:
-        raw_sheet = _unique_sheet_name("OCR_Raw", sheets)
-        sheets[raw_sheet] = raw_rows
+        ws = wb.create_sheet(title="OCR_Raw")
+        ws.append(["filename", "ocr_text"])
+        for cell in ws[1]:
+            cell.font = _HEADER_FONT
+            cell.fill = _HEADER_FILL
+        for row in raw_rows:
+            ws.append([row["filename"], row["ocr_text"]])
 
-    # --- Write workbook ---
+    if not wb.sheetnames:
+        ws = wb.create_sheet("Empty")
+        ws.append(["message"])
+        ws.append(["No data extracted"])
+
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
-
-    if not sheets:
-        # Nothing to write — create a placeholder
-        sheets["Empty"] = [{"message": "No data extracted"}]
-
-    with pd.ExcelWriter(output_path, engine="openpyxl") as writer:
-        for sheet_name, rows in sheets.items():
-            if not rows:
-                continue
-            df = pd.DataFrame(rows)
-            # Ensure "filename" is always the first column
-            if "filename" in df.columns:
-                other_cols = [c for c in df.columns if c != "filename"]
-                df = df[["filename"] + other_cols]
-            df.to_excel(writer, sheet_name=sheet_name[:31], index=False)
-
+    wb.save(output_path)
     return output_path
