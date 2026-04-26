@@ -8,6 +8,7 @@ import uvicorn
 
 from pipeline.lightonocr_common import process_uploaded_document
 from pipeline.model import DEVICE
+from pydantic import BaseModel
 
 app = FastAPI(
     title="LightOnOCR-2-1B API",
@@ -79,8 +80,13 @@ async def extract_document(
                 pass
 
 
-@app.get("/download")
-def download_file(path: str):
+class DownloadRequest(BaseModel):
+    path: str
+
+
+@app.post("/download")
+def download_file(req: DownloadRequest):
+    path = req.path
     if not path or not os.path.exists(path):
         raise HTTPException(status_code=404, detail="File not found")
 
