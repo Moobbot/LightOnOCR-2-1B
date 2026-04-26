@@ -87,7 +87,7 @@ def extract_ocr_from_image(
     source_name: str,
     prompt: str = "Extract all text and tables from this image.",
     temperature: float = 0.2,
-    max_tokens: int = 8192,
+    max_tokens: int = 4096,
     do_sample: bool | None = None,
 ) -> OCRBundle:
     """Run OCR on a single image and export structured results."""

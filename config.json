@@ -81,7 +81,7 @@
     "hidden_size": 1024,
     "image_size": 1540,
     "initializer_range": 0.02,
-    "intermediate_size": 8192,
+    "intermediate_size": 4096,
     "model_type": "pixtral",
     "num_attention_heads": 16,
     "num_channels": 3,

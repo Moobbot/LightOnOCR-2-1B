@@ -53,7 +53,7 @@ def run_extract(file_input, page_num):
             page_num=int(page_num or 1),
             prompt="Extract all text and tables from this image.",
             temperature=0.2,
-            max_tokens=8192,
+            max_tokens=4096,
         )
         elapsed = time.time() - started
         status = f"{bundle.status} | {elapsed:.1f}s"

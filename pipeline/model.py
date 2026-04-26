@@ -56,6 +56,7 @@ def get_model():
             torch_dtype=DTYPE,
             trust_remote_code=True,
             local_files_only=True,
+            ignore_mismatched_sizes=True,
         )
         .to(DEVICE)
         .eval()

@@ -41,14 +41,14 @@ from pipeline.exporter import save_json, json_to_excel
 # Supported file types
 # --------------------------------------------------------------------------
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".bmp", ".webp", ".tiff", ".tif"}
-PDF_EXTENSIONS   = {".pdf"}
-ALL_EXTENSIONS   = IMAGE_EXTENSIONS | PDF_EXTENSIONS
-
+PDF_EXTENSIONS = {".pdf"}
+ALL_EXTENSIONS = IMAGE_EXTENSIONS | PDF_EXTENSIONS
 
 
 # --------------------------------------------------------------------------
 # File collection
 # --------------------------------------------------------------------------
+
 
 def collect_inputs(input_path: str, recursive: bool = False) -> List[str]:
     """
@@ -79,6 +79,7 @@ def collect_inputs(input_path: str, recursive: bool = False) -> List[str]:
 # --------------------------------------------------------------------------
 # Per-file processing
 # --------------------------------------------------------------------------
+
 
 def process_image(
     image: Image.Image,
@@ -123,12 +124,13 @@ def process_image(
 # Summary
 # --------------------------------------------------------------------------
 
+
 def print_summary(results: list, total_elapsed: float) -> None:
-    total   = len(results)
-    tables  = sum(1 for r in results if r.get("table_count", 0) > 0)
-    kv      = sum(1 for r in results if r.get("kv_pairs"))
+    total = len(results)
+    tables = sum(1 for r in results if r.get("table_count", 0) > 0)
+    kv = sum(1 for r in results if r.get("kv_pairs"))
     skipped = sum(1 for r in results if r.get("skipped"))
-    errors  = sum(1 for r in results if r.get("error"))
+    errors = sum(1 for r in results if r.get("error"))
 
     print("\n" + "=" * 55)
     print("  SUMMARY")
@@ -145,26 +147,46 @@ def print_summary(results: list, total_elapsed: float) -> None:
 # CLI
 # --------------------------------------------------------------------------
 
+
 def parse_args():
     parser = argparse.ArgumentParser(
         description="LightOnOCR-2-1B — Trích xuất dữ liệu từ ảnh và PDF",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=__doc__,
     )
-    parser.add_argument("--input",  "-i", required=True,
-                        help="File ảnh, PDF, hoặc thư mục")
-    parser.add_argument("--output-dir", "-o", default="outputs",
-                        help="Thư mục lưu kết quả (default: ./outputs)")
-    parser.add_argument("--output-name", "-n", default="result",
-                        help="Tên file output không có extension (default: result)")
-    parser.add_argument("--max-tokens", type=int, default=8192,
-                        help="Max tokens sinh ra mỗi trang/ảnh (default: 8192)")
-    parser.add_argument("--recursive", "-r", action="store_true",
-                        help="Quét thư mục đệ quy")
-    parser.add_argument("--blank-threshold", type=float, default=0.99,
-                        help="Ngưỡng tỉ lệ pixel trắng để bỏ qua trang trắng (default: 0.99)")
-    parser.add_argument("--no-skip-blank", action="store_true",
-                        help="Không bỏ qua trang trắng")
+    parser.add_argument(
+        "--input", "-i", required=True, help="File ảnh, PDF, hoặc thư mục"
+    )
+    parser.add_argument(
+        "--output-dir",
+        "-o",
+        default="outputs",
+        help="Thư mục lưu kết quả (default: ./outputs)",
+    )
+    parser.add_argument(
+        "--output-name",
+        "-n",
+        default="result",
+        help="Tên file output không có extension (default: result)",
+    )
+    parser.add_argument(
+        "--max-tokens",
+        type=int,
+        default=4096,
+        help="Max tokens sinh ra mỗi trang/ảnh (default: 4096)",
+    )
+    parser.add_argument(
+        "--recursive", "-r", action="store_true", help="Quét thư mục đệ quy"
+    )
+    parser.add_argument(
+        "--blank-threshold",
+        type=float,
+        default=0.99,
+        help="Ngưỡng tỉ lệ pixel trắng để bỏ qua trang trắng (default: 0.99)",
+    )
+    parser.add_argument(
+        "--no-skip-blank", action="store_true", help="Không bỏ qua trang trắng"
+    )
     return parser.parse_args()
 
 
@@ -222,8 +244,13 @@ def main():
             for page_img, page_label in pages:
                 print(f"           • {page_label}")
                 r = process_image(
-                    page_img, page_label, model, processor,
-                    args.max_tokens, args.blank_threshold, skip_blank,
+                    page_img,
+                    page_label,
+                    model,
+                    processor,
+                    args.max_tokens,
+                    args.blank_threshold,
+                    skip_blank,
                 )
                 if r:
                     results.append(r)
@@ -234,16 +261,26 @@ def main():
                 image = Image.open(file_path).convert("RGB")
             except Exception as e:
                 print(f"         ↳ [SKIP] Không mở được ảnh: {e}")
-                results.append({
-                    "filename": fname,
-                    "ocr_text": "", "tables": [], "kv_pairs": {},
-                    "table_count": 0, "error": str(e),
-                })
+                results.append(
+                    {
+                        "filename": fname,
+                        "ocr_text": "",
+                        "tables": [],
+                        "kv_pairs": {},
+                        "table_count": 0,
+                        "error": str(e),
+                    }
+                )
                 continue
 
             r = process_image(
-                image, fname, model, processor,
-                args.max_tokens, args.blank_threshold, skip_blank,
+                image,
+                fname,
+                model,
+                processor,
+                args.max_tokens,
+                args.blank_threshold,
+                skip_blank,
             )
             if r:
                 results.append(r)
@@ -255,7 +292,7 @@ def main():
         print("\n[WARNING] Không có kết quả để lưu.")
         sys.exit(0)
 
-    json_path  = os.path.join(args.output_dir, f"{args.output_name}.json")
+    json_path = os.path.join(args.output_dir, f"{args.output_name}.json")
     excel_path = os.path.join(args.output_dir, f"{args.output_name}.xlsx")
 
     save_json(results, json_path)

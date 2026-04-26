@@ -121,7 +121,7 @@ def extract_text(
     processor,
     image: Image.Image,
     prompt: str = "Extract all text and tables from this image.",
-    max_tokens: int = 8192,
+    max_tokens: int = 4096,
     temperature: float = 0.0,
     top_p: float = 0.9,
     do_sample: bool = False,
