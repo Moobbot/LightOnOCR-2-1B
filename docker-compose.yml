@@ -2,11 +2,13 @@
 # docker-compose.yml — LightOnOCR-2-1B
 #
 # Services:
-#   demo   — Gradio web UI (mặc định)
+#   api    — FastAPI REST server (chạy api_server.py)
+#   demo   — Gradio web UI (tùy chọn)
 #   batch  — CLI batch processor (chạy bằng profile)
 #
 # Khởi động:
-#   docker compose up demo          # Web UI
+#   docker compose up api            # REST API server (port 7860)
+#   docker compose up demo           # Web UI (port 7860)
 #   docker compose run batch --input /data --output-dir /outputs
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -14,7 +16,42 @@ name: lightonocr
 
 services:
 
+  # ── FastAPI REST Server ───────────────────────────────────────────────────
+  # Này là endpoint chính để extract-pdf gọi tới qua local_http
+  api:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    image: lightonocr:latest
+    container_name: lightonocr-api
+    ports:
+      - "7860:7860"
+    volumes:
+      # Model weights (read-only)
+      - .:/weights:ro
+      # Kết quả xuất ra host
+      - ./outputs:/app/outputs
+    environment:
+      MODEL_PATH: /weights
+      PYTORCH_ENABLE_MPS_FALLBACK: "1"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [ gpu ]
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:7860/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s # chờ model load xong
+    command: [ "python", "app_server.py", "--host", "0.0.0.0", "--port", "7860" ]
+
   # ── Web Demo (Gradio) ─────────────────────────────────────────────────────
+  # Tùy chọn — khởi động: docker compose --profile demo up demo
   demo:
     build:
       context: .
@@ -22,9 +59,9 @@ services:
     image: lightonocr:latest
     container_name: lightonocr-demo
     ports:
-      - "7860:7860"
+      - "7861:7860"
     volumes:
-      # Model weights (read-only) — trỏ tới thư mục chứa model files
+      # Model weights (read-only)
       - .:/weights:ro
       # Kết quả xuất ra host
       - ./outputs:/app/outputs
@@ -38,17 +75,20 @@ services:
           devices:
             - driver: nvidia
               count: 1
-              capabilities: [gpu]
+              capabilities: [ gpu ]
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:7860"]
+      test: [ "CMD", "curl", "-f", "http://localhost:7860" ]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 60s   # chờ model load xong
+      start_period: 60s
+    profiles:
+      - demo
+    command: [ "python", "demo.py" ]
 
   # ── Batch CLI ─────────────────────────────────────────────────────────────
-  # Chạy: docker compose run --rm batch --input /data --output-name result
+  # Chạy: docker compose --profile batch run batch --input /data --output-name result
   batch:
     build:
       context: .
@@ -70,10 +110,8 @@ services:
           devices:
             - driver: nvidia
               count: 1
-              capabilities: [gpu]
-    entrypoint: ["python", "run.py"]
-    # Mặc định xử lý /data, override khi chạy:
-    # docker compose run --rm batch --input /data --output-name batch_01
-    command: ["--input", "/data", "--output-dir", "/app/outputs"]
+              capabilities: [ gpu ]
+    entrypoint: [ "python", "run.py" ]
+    command: [ "--input", "/data", "--output-dir", "/app/outputs" ]
     profiles:
-      - batch   # không start khi `docker compose up`
+      - batch

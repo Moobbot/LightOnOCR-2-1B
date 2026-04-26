@@ -25,6 +25,7 @@ from .model import DEVICE, DTYPE
 # LOGIC — Tiền xử lý / hậu xử lý
 # =============================================================================
 
+
 def is_blank_page(image: Image.Image, threshold: float = 0.99) -> bool:
     """
     INPUT  : PIL Image, ngưỡng tỉ lệ pixel trắng
@@ -66,29 +67,45 @@ def clean_output_text(text: str) -> str:
     return cleaned
 
 
-def _prepare_inputs(processor, image: Image.Image) -> dict:
+def _prepare_inputs(processor, image: Image.Image, prompt: str) -> dict:
     """
     INPUT  : processor, PIL Image
     OUTPUT : dict of tensors đã chuyển về đúng device/dtype
 
-    Logic  : apply chat template → tokenize → move to device
+    Logic  : Process image + text qua processor
+             (LightOnOcrProcessor không có apply_chat_template)
     """
-    chat = [{"role": "user", "content": [{"type": "image", "url": image}]}]
-    inputs = processor.apply_chat_template(
-        chat,
-        add_generation_prompt=True,
-        tokenize=True,
-        return_dict=True,
-        return_tensors="pt",
-    )
+    if hasattr(processor, "apply_chat_template"):
+        chat = [
+            {
+                "role": "user",
+                "content": [
+                    {"type": "image", "url": image},
+                    {"type": "text", "text": prompt},
+                ],
+            }
+        ]
+        inputs = processor.apply_chat_template(
+            chat,
+            add_generation_prompt=True,
+            tokenize=True,
+            return_dict=True,
+            return_tensors="pt",
+        )
+    else:
+        inputs = processor(
+            images=image,
+            text=prompt,
+            return_tensors="pt",
+        )
+
+    # Move to device + convert dtype
     return {
         k: (
             v.to(device=DEVICE, dtype=DTYPE)
             if isinstance(v, torch.Tensor)
             and v.dtype in (torch.float32, torch.float16, torch.bfloat16)
-            else v.to(DEVICE)
-            if isinstance(v, torch.Tensor)
-            else v
+            else v.to(DEVICE) if isinstance(v, torch.Tensor) else v
         )
         for k, v in inputs.items()
     }
@@ -98,10 +115,12 @@ def _prepare_inputs(processor, image: Image.Image) -> dict:
 # OUTPUT — Chạy inference
 # =============================================================================
 
+
 def extract_text(
     model,
     processor,
     image: Image.Image,
+    prompt: str = "Extract all text and tables from this image.",
     max_tokens: int = 8192,
     temperature: float = 0.0,
     top_p: float = 0.9,
@@ -118,7 +137,7 @@ def extract_text(
 
     Logic  : tokenize → generate → decode → clean
     """
-    inputs = _prepare_inputs(processor, image)
+    inputs = _prepare_inputs(processor, image, prompt)
 
     with torch.no_grad():
         outputs = model.generate(

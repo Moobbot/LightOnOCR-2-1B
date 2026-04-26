@@ -8,6 +8,7 @@
 ## Tổng quan
 
 Pipeline OCR cục bộ dùng để:
+
 - Trích xuất văn bản từ **ảnh** (JPG, PNG, BMP, WEBP) và **file PDF**
 - Tự động parse **bảng HTML/Markdown** và **cặp Key-Value**
 - Xuất kết quả ra **JSON** và **Excel (.xlsx)**
@@ -28,7 +29,9 @@ LightOnOCR-2-1B/
 │   ├── table_parser.py         # Parse HTML table / Markdown table / text lines / KV
 │   └── exporter.py             # Xuất JSON và Excel (4 bước rõ ràng)
 │
-├── demo.py                     # Giao diện web Gradio (chạy local)
+├── app_server.py               # FastAPI + Gradio Server (chạy cả UI + REST API)
+├── demo.py                     # Gradio UI riêng lẻ (legacy)
+├── api_server.py               # FastAPI REST API riêng (deprecated — dùng app_server.py)
 ├── run.py                      # CLI batch processor
 ├── test_export.py              # Test nhanh: re-parse JSON → Excel
 │
@@ -66,9 +69,10 @@ docker compose run --rm batch --input /data --output-name result
 ### Phương án B — Conda (local development)
 
 ### Yêu cầu
+
 - Python 3.10+
 - Conda (Miniconda / Anaconda)
-- GPU NVIDIA với CUDA 12.x *(khuyến nghị, CPU cũng chạy được nhưng chậm)*
+- GPU NVIDIA với CUDA 12.x _(khuyến nghị, CPU cũng chạy được nhưng chậm)_
 
 ### Bước 1 — Tạo môi trường
 
@@ -95,11 +99,34 @@ pip install -r requirements.txt
 python -c "import torch; print('CUDA:', torch.cuda.is_available())"
 ```
 
----
-
 ## Sử dụng
 
-### 1. Web UI (Gradio)
+### 1. FastAPI + Gradio Server (chạy cả UI + REST API)
+
+**Khuyến nghị:** Dùng `app_server.py` — gộp Gradio UI + FastAPI REST API vào một server duy nhất.
+
+```powershell
+conda activate extract-pdf
+cd LightOnOCR-2-1B
+python app_server.py --host 0.0.0.0 --port 7860
+```
+
+Mặc định chạy trên **http://localhost:7860**
+
+**Tính năng:**
+
+- **Gradio UI** (tại `/`): Upload ảnh/PDF, OCR, hiển thị kết quả, tải xuống JSON/Excel
+- **REST API** (tại `/ocr`): `POST /ocr` cho các ứng dụng khác gọi tới
+- **Docs**: Xem API docs tại `http://localhost:7860/docs`
+- **Health check**: `GET /health`
+
+---
+
+### 2. Gradio Web UI (Legacy — nếu chỉ muốn UI, không cần REST API)
+
+- Upload ảnh hoặc PDF (có slider chọn trang)
+- OCR → hiển thị văn bản rendered (Markdown/bảng/LaTeX)
+- Raw text, JSON cấu trúc, tải xuống `.json` + `.xlsx`
 
 ```powershell
 conda activate extract-pdf
@@ -109,14 +136,11 @@ python demo.py
 
 Mở trình duyệt tại **http://localhost:7860**
 
-**Tính năng:**
-- Upload ảnh hoặc PDF (có slider chọn trang)
-- OCR → hiển thị văn bản rendered (Markdown/bảng/LaTeX)
-- Raw text, JSON cấu trúc, tải xuống `.json` + `.xlsx`
+> **Lưu ý:** Đây là cách chạy Gradio riêng lẻ (không có REST API). Nên dùng `python app_server.py` nếu muốn cả UI + API.
 
 ---
 
-### 2. CLI Batch (xử lý hàng loạt)
+### 3. CLI Batch (xử lý hàng loạt)
 
 ```powershell
 conda activate extract-pdf
@@ -142,19 +166,91 @@ python run.py --input ..\datasets\ --max-tokens 16384
 
 #### Tham số CLI
 
-| Tham số | Mặc định | Mô tả |
-|---|---|---|
-| `--input` | *(bắt buộc)* | File ảnh, PDF, hoặc thư mục |
-| `--output-dir` | `outputs` | Thư mục lưu kết quả |
-| `--output-name` | `result` | Tên file output (không có extension) |
-| `--max-tokens` | `8192` | Giới hạn token mỗi trang |
-| `--recursive` | False | Quét thư mục đệ quy |
-| `--blank-threshold` | `0.99` | Ngưỡng phát hiện trang trắng |
-| `--no-skip-blank` | False | Không bỏ qua trang trắng |
+| Tham số             | Mặc định     | Mô tả                                |
+| ------------------- | ------------ | ------------------------------------ |
+| `--input`           | _(bắt buộc)_ | File ảnh, PDF, hoặc thư mục          |
+| `--output-dir`      | `outputs`    | Thư mục lưu kết quả                  |
+| `--output-name`     | `result`     | Tên file output (không có extension) |
+| `--max-tokens`      | `8192`       | Giới hạn token mỗi trang             |
+| `--recursive`       | False        | Quét thư mục đệ quy                  |
+| `--blank-threshold` | `0.99`       | Ngưỡng phát hiện trang trắng         |
+| `--no-skip-blank`   | False        | Không bỏ qua trang trắng             |
 
 ---
 
-### 3. Test export (không cần OCR lại)
+### 4. REST API Server (Legacy — nếu chỉ muốn API, không cần UI)
+
+Để gọi OCR từ một ứng dụng khác qua HTTP, dùng `app_server.py` như hướng dẫn ở **mục 1**.
+
+Nếu chỉ muốn API không UI, có thể tự viết FastAPI wrapper gọi `pipeline.ocr_engine.extract_text()`.
+
+**Endpoint:**
+
+```bash
+POST /ocr
+Content-Type: application/json
+
+{
+  "image_base64": "<base64-encoded image>",
+  "prompt": "Extract all text and tables from this image.",
+  "model": null
+}
+```
+
+**Response:**
+
+```json
+{
+  "content": "Extracted text and structured data..."
+}
+```
+
+---
+
+### 5. REST API Server (Legacy — cách cũ)
+
+```bash
+POST /ocr
+Content-Type: application/json
+
+{
+  "image_base64": "...",
+  "prompt": "Extract all text and tables",
+  "model": null
+}
+```
+
+Trả về:
+
+```json
+{
+  "content": "extracted_text_and_tables_as_markdown"
+}
+```
+
+#### Từ extract-pdf gọi tới
+
+Sau khi API LightOnOCR đang chạy, cấu hình `extract-pdf` để gọi:
+
+1. Mở `extract-pdf/ui-config.json`
+2. Thiết lập profile để dùng `local_http`:
+
+```json
+{
+  "lightonocr-2-1b": {
+    "type": "local_http",
+    "base_url": "http://127.0.0.1:7860/ocr",
+    "model": null
+  }
+}
+```
+
+3. Đảm bảo API server LightOnOCR đang chạy
+4. Từ `extract-pdf` UI, chọn preset `lightonocr-2-1b` rồi submit task
+
+---
+
+### 4. Test export (không cần OCR lại)
 
 Dùng khi đã có JSON và muốn kiểm tra/xuất lại Excel:
 
@@ -178,14 +274,16 @@ python test_export.py ..\datasets\Trang000001.json outputs\custom_output.xlsx
       {
         "headers": ["SĐT", "HỌ TÊN", "NGÀY SINH", "..."],
         "rows": [
-          { "SĐT": "1", "HỌ TÊN": "Nguyễn Văn A", "NGÀY SINH": "01/01/1990", "...": "" }
+          {
+            "SĐT": "1",
+            "HỌ TÊN": "Nguyễn Văn A",
+            "NGÀY SINH": "01/01/1990",
+            "...": ""
+          }
         ]
       }
     ],
-    "text_lines": [
-      "DANH SÁCH CẤP BẰNG TỐT NGHIỆP",
-      "Số SVTN: 51 SV"
-    ],
+    "text_lines": ["DANH SÁCH CẤP BẰNG TỐT NGHIỆP", "Số SVTN: 51 SV"],
     "kv_pairs": {
       "Số SVTN": "51 SV"
     },
@@ -198,11 +296,11 @@ python test_export.py ..\datasets\Trang000001.json outputs\custom_output.xlsx
 
 Mỗi **cấu trúc bảng duy nhất** → 1 sheet riêng:
 
-| Kiểu dòng | Màu nền | Nội dung |
-|---|---|---|
-| **Header** | Xanh đậm (#1F4E79) | Tên các cột |
+| Kiểu dòng         | Màu nền                         | Nội dung                                   |
+| ----------------- | ------------------------------- | ------------------------------------------ |
+| **Header**        | Xanh đậm (#1F4E79)              | Tên các cột                                |
 | **Text metadata** | Xanh nhạt (#EBF3FB, in nghiêng) | Dòng text ngoài bảng (tiêu đề, ghi chú...) |
-| **Dữ liệu bảng** | Trắng | Giá trị từng ô trong bảng |
+| **Dữ liệu bảng**  | Trắng                           | Giá trị từng ô trong bảng                  |
 
 Ảnh không parse được bảng → sheet `OCR_Raw`.
 

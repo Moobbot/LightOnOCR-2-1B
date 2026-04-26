@@ -65,6 +65,7 @@ def get_model():
         LOCAL_MODEL_PATH,
         trust_remote_code=True,
         local_files_only=True,
+        fix_mistral_regex=True,
     )
 
     print(f"[Model] Loaded in {time.time() - start:.2f}s")

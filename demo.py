@@ -1,257 +1,138 @@
 #!/usr/bin/env python3
-"""
-demo.py — LightOnOCR-2-1B Gradio Demo (local, simple)
+"""LightOnOCR-2-1B minimal Gradio demo.
 
-Chạy:
-    conda activate extract-pdf
-    python demo.py
-Mở trình duyệt tại http://localhost:7860
+Flow: upload image/PDF -> preview -> click Extract -> show OCR text.
 """
 
-import sys, json, os, tempfile, time, warnings
-warnings.filterwarnings("ignore")
+from __future__ import annotations
+
+import os
+import socket
+import time
+import warnings
 
 import gradio as gr
-from PIL import Image
 
-sys.path.insert(0, ".")
-from pipeline.model import get_model, DEVICE, ATTN_IMPLEMENTATION, LOCAL_MODEL_PATH
-from pipeline.ocr_engine import extract_text, is_blank_page
-from pipeline.pdf_renderer import render_pdf_page, HAS_PDFIUM
-from pipeline.table_parser import extract_structured_data
-from pipeline.exporter import save_json, json_to_excel
+from pipeline.lightonocr_common import load_uploaded_document, process_uploaded_document
+from pipeline.model import DEVICE
 
-_model = None
-_processor = None
-
-def _ensure_model():
-    global _model, _processor
-    if _model is None:
-        _model, _processor = get_model()
-    return _model, _processor
+warnings.filterwarnings("ignore")
 
 
-
-
-
-
-
-def update_file_preview(file_input):
-    """Cập nhật slider trang PDF và ảnh preview khi upload file."""
+def update_preview(file_input):
     if file_input is None:
-        return gr.update(maximum=20, value=1, visible=False), None
-    path = file_input if isinstance(file_input, str) else file_input.name
-    if path.lower().endswith(".pdf") and HAS_PDFIUM:
-        try:
-            img, total, _ = render_pdf_page(path, page_num=1)
-            return gr.update(maximum=total, value=1, visible=True), img
-        except Exception:
-            return gr.update(maximum=20, value=1, visible=True), None
-    else:
-        try:
-            return gr.update(maximum=1, value=1, visible=False), Image.open(path)
-        except Exception:
-            return gr.update(maximum=1, value=1, visible=False), None
+        return gr.update(value=1, maximum=1, visible=False), None, ""
 
-
-# ── Core OCR (không streaming) ────────────────────────────────────────────────
-
-def run_ocr(file_input, page_slider, temperature, max_tokens):
-    """
-    Chạy OCR đầy đủ, trả về:
-      (status, rendered_md, raw_text, json_str, json_file, excel_file)
-    """
-    if file_input is None:
-        return "⚠️ Vui lòng upload ảnh hoặc PDF.", "", "", "{}", None, None
-
-    path = file_input if isinstance(file_input, str) else file_input.name
-
-    # Load ảnh / PDF
-    if path.lower().endswith(".pdf"):
-        if not HAS_PDFIUM:
-            return "❌ pypdfium2 chưa cài. Chạy: pip install pypdfium2", "", "", "{}", None, None
-        try:
-            image, total_pages, actual_page = render_pdf_page(path, int(page_slider))
-            page_info = f"Trang {actual_page}/{total_pages}"
-        except Exception as e:
-            return f"❌ Lỗi đọc PDF: {e}", "", "", "{}", None, None
-    else:
-        try:
-            image = Image.open(path).convert("RGB")
-            page_info = os.path.basename(path)
-        except Exception as e:
-            return f"❌ Lỗi mở ảnh: {e}", "", "", "{}", None, None
-
-    if is_blank_page(image):
-        return "⚠️ Ảnh trắng/rỗng — bỏ qua.", "", "", "{}", None, None
-
-    # Load model
     try:
-        model, processor = _ensure_model()
-    except Exception as e:
-        return f"❌ Lỗi load model: {e}", "", "", "{}", None, None
-
-    # OCR inference — dùng extract_text từ pipeline.ocr_engine
-    t0 = time.time()
-    try:
-        do_sample = float(temperature) > 0
-        full_text = extract_text(
-            model, processor, image,
-            max_tokens=int(max_tokens),
-            temperature=float(temperature),
-            do_sample=do_sample,
+        loaded = load_uploaded_document(file_input, page_num=1)
+        return (
+            gr.update(
+                value=loaded.actual_page,
+                maximum=loaded.total_pages,
+                visible=loaded.is_pdf,
+            ),
+            loaded.image,
+            loaded.page_info,
         )
-    except Exception as e:
-        return f"❌ Lỗi OCR: {e}", "", "", "{}", None, None
-    elapsed = time.time() - t0
-
-    # Parse
-    fname = os.path.basename(path)
-    structured = extract_structured_data(fname, full_text)
-    n_tables = structured["table_count"]
-    n_texts  = len(structured.get("text_lines", []))
-    n_kv     = len(structured.get("kv_pairs", {}))
-
-    json_preview = {
-        "tables":     structured["tables"],
-        "text_lines": structured["text_lines"],
-        "kv_pairs":   structured["kv_pairs"],
-    }
-    json_str = json.dumps(json_preview, ensure_ascii=False, indent=2)
-
-    # Export files
-    tmp = tempfile.mkdtemp()
-    json_path  = os.path.join(tmp, f"{os.path.splitext(fname)[0]}.json")
-    excel_path = os.path.join(tmp, f"{os.path.splitext(fname)[0]}.xlsx")
-    save_json([structured], json_path)
-    json_to_excel([structured], excel_path)
-
-    status = f"✅ {page_info} | {elapsed:.1f}s | bảng={n_tables} | text={n_texts} | kv={n_kv}"
-    return status, full_text, full_text, json_str, json_path, excel_path
+    except Exception as exc:
+        return (
+            gr.update(value=1, maximum=1, visible=False),
+            None,
+            f"❌ Preview failed: {exc}",
+        )
 
 
-# ── UI ────────────────────────────────────────────────────────────────────────
+def run_extract(file_input, page_num):
+    if file_input is None:
+        return "⚠️ Vui lòng upload ảnh hoặc PDF.", "", None, None
 
-with gr.Blocks(
-    title="LightOnOCR-2-1B",
-    theme=gr.themes.Soft(primary_hue="blue"),
-) as demo:
+    started = time.time()
+    try:
+        _loaded, bundle = process_uploaded_document(
+            file_input=file_input,
+            page_num=int(page_num or 1),
+            prompt="Extract all text and tables from this image.",
+            temperature=0.2,
+            max_tokens=8192,
+        )
+        elapsed = time.time() - started
+        status = f"{bundle.status} | {elapsed:.1f}s"
+        return (
+            status,
+            bundle.rendered_text or bundle.raw_text,
+            bundle.json_path,
+            bundle.excel_path,
+        )
+    except Exception as exc:
+        return f"❌ OCR failed: {exc}", "", None, None
 
-    gr.Markdown(f"""
-# 🔍 LightOnOCR-2-1B — Demo local
-**Device:** `{DEVICE.upper()}` &nbsp;|&nbsp; **Attn:** `{ATTN_IMPLEMENTATION}`
-""")
+
+def _find_free_port(start_port: int = 7860, end_port: int = 7870) -> int:
+    for port in range(start_port, end_port + 1):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            if sock.connect_ex(("127.0.0.1", port)) != 0:
+                return port
+    return start_port
+
+
+with gr.Blocks(title="LightOnOCR-2-1B") as demo:
+    gr.Markdown(
+        f"""
+# LightOnOCR-2-1B
+Upload ảnh/PDF rồi bấm Extract.
+
+**Device:** {DEVICE.upper()}
+"""
+    )
 
     with gr.Row():
-        # ── Cột trái ─────────────────────────────────────────────────────────
         with gr.Column(scale=1):
             file_input = gr.File(
-                label="📂 Upload ảnh hoặc PDF",
+                label="Upload ảnh hoặc PDF",
                 file_types=[".jpg", ".jpeg", ".png", ".bmp", ".webp", ".pdf"],
                 type="filepath",
             )
-            preview_img = gr.Image(
-                label="🖼 Preview", type="pil", height=320, interactive=False,
+            page_num = gr.Slider(
+                1, 200, value=1, step=1, label="PDF page", visible=False
             )
-            page_slider = gr.Slider(
-                minimum=1, maximum=20, value=1, step=1,
-                label="📄 Trang PDF", visible=False,
+            preview = gr.Image(
+                label="Preview", type="pil", interactive=False, height=320
             )
-            temperature = gr.Slider(
-                0.0, 1.0, value=0.2, step=0.05,
-                label="Temperature (0 = deterministic)",
-            )
-            max_tokens = gr.Slider(
-                256, 16384, value=4096, step=256, label="Max tokens",
-            )
-            with gr.Row():
-                run_btn   = gr.Button("🚀 Chạy OCR", variant="primary", size="lg")
-                clear_btn = gr.Button("🗑️ Xóa", size="lg")
+            status = gr.Textbox(label="Status", interactive=False, lines=1)
+            extract_btn = gr.Button("Extract", variant="primary")
 
-        # ── Cột phải ──────────────────────────────────────────────────────────
         with gr.Column(scale=2):
-            status_box = gr.Textbox(
-                label="ℹ️ Trạng thái", value="", interactive=False, lines=1,
+            result = gr.Markdown(
+                label="Markdown Preview",
+                value="*Kết quả Markdown sẽ hiển thị ở đây...*",
             )
-            output_md = gr.Markdown(
-                value="*Kết quả OCR sẽ hiển thị ở đây...*",
-                latex_delimiters=[
-                    {"left": "$$", "right": "$$", "display": True},
-                    {"left": "$",  "right": "$",  "display": False},
-                ],
-                label="📄 Văn bản (Rendered)",
-            )
-            output_raw = gr.Textbox(
-                label="📝 Raw Text",
-                lines=10,
-                max_lines=20,
-                interactive=False,
-            )
-            json_out = gr.Code(
-                label="🗂️ JSON (Bảng + KV)",
-                language="json",
-                lines=10,
-            )
-
-    # ── Nút tải xuống (cuối trang) ────────────────────────────────────────────
-    gr.Markdown("---\n### 💾 Tải xuống kết quả")
-    with gr.Row():
-        download_json  = gr.File(label="📥 result.json")
-        download_excel = gr.File(label="📥 result.xlsx")
-
-    # ── Ảnh mẫu ───────────────────────────────────────────────────────────────
-    example_files = []
-    for search_dir in [r"..\datasets\exemples", r"..\datasets\test"]:
-        if os.path.isdir(search_dir):
-            for f in sorted(os.listdir(search_dir))[:6]:
-                if f.lower().endswith((".jpg", ".jpeg", ".png")):
-                    example_files.append([os.path.join(search_dir, f)])
-            if example_files:
-                break
-
-    if example_files:
-        gr.Examples(
-            examples=example_files,
-            inputs=[file_input],
-            label="📁 Ảnh mẫu",
-        )
-
-    # ── Events ────────────────────────────────────────────────────────────────
+            json_file = gr.File(label="JSON")
+            excel_file = gr.File(label="Excel")
 
     file_input.change(
-        fn=update_file_preview,
+        fn=update_preview,
         inputs=[file_input],
-        outputs=[page_slider, preview_img],
+        outputs=[page_num, preview, status],
     )
 
-    run_btn.click(
-        fn=run_ocr,
-        inputs=[file_input, page_slider, temperature, max_tokens],
-        outputs=[status_box, output_md, output_raw, json_out, download_json, download_excel],
-    )
-
-    clear_btn.click(
-        fn=lambda: (None, None, gr.update(visible=False), "", "*Kết quả OCR sẽ hiển thị ở đây...*", "", "{}", None, None),
-        outputs=[file_input, preview_img, page_slider, status_box, output_md, output_raw, json_out, download_json, download_excel],
+    extract_btn.click(
+        fn=run_extract,
+        inputs=[file_input, page_num],
+        outputs=[status, result, json_file, excel_file],
     )
 
 
 if __name__ == "__main__":
-    # GRADIO_HOST=0.0.0.0 trong Docker để accessible từ bên ngoài container
     host = os.environ.get("GRADIO_HOST", "localhost")
-    port = int(os.environ.get("GRADIO_PORT", "7860"))
-    in_docker = os.environ.get("GRADIO_HOST") == "0.0.0.0"
+    port = int(os.environ.get("GRADIO_PORT") or _find_free_port())
 
     print(f"\n{'=' * 50}")
-    print(f"  LightOnOCR-2-1B — Demo")
+    print("  LightOnOCR-2-1B — Demo")
     print(f"  Device : {DEVICE.upper()}")
     print(f"  URL    : http://{host}:{port}")
     print(f"{'=' * 50}\n")
 
     demo.launch(
-        server_name=host,
-        server_port=port,
-        share=False,
-        inbrowser=not in_docker,   # không mở browser khi chạy Docker
-        ssr_mode=False,
+        server_name=host, server_port=port, share=False, inbrowser=host != "0.0.0.0"
     )
