@@ -2,12 +2,12 @@
 # docker-compose.yml — LightOnOCR-2-1B
 #
 # Services:
-#   api    — FastAPI REST server (chạy api_server.py)
+#   api    — FastAPI REST server (chạy api.py)
 #   demo   — Gradio web UI (tùy chọn)
 #   batch  — CLI batch processor (chạy bằng profile)
 #
 # Khởi động:
-#   docker compose up api            # REST API server (port 7860)
+#   docker compose up api            # REST API server (port 7861)
 #   docker compose up demo           # Web UI (port 7860)
 #   docker compose run batch --input /data --output-dir /outputs
 # ─────────────────────────────────────────────────────────────────────────────
@@ -25,7 +25,7 @@ services:
     image: lightonocr:latest
     container_name: lightonocr-api
     ports:
-      - "7860:7860"
+      - "7861:7861"
     volumes:
       # Model weights (read-only)
       - .:/weights:ro
@@ -34,6 +34,8 @@ services:
     environment:
       MODEL_PATH: /weights
       PYTORCH_ENABLE_MPS_FALLBACK: "1"
+      API_HOST: 0.0.0.0
+      API_PORT: "7861"
     deploy:
       resources:
         reservations:
@@ -43,12 +45,19 @@ services:
               capabilities: [ gpu ]
     restart: unless-stopped
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:7860/health" ]
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request;
+            urllib.request.urlopen('http://127.0.0.1:7861/', timeout=5).read()",
+        ]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 60s # chờ model load xong
-    command: [ "python", "app_server.py", "--host", "0.0.0.0", "--port", "7860" ]
+    command: [ "python", "api.py" ]
 
   # ── Web Demo (Gradio) ─────────────────────────────────────────────────────
   # Tùy chọn — khởi động: docker compose --profile demo up demo
@@ -78,7 +87,14 @@ services:
               capabilities: [ gpu ]
     restart: unless-stopped
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:7860" ]
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request;
+            urllib.request.urlopen('http://127.0.0.1:7860/', timeout=5).read()",
+        ]
       interval: 30s
       timeout: 10s
       retries: 3

@@ -37,6 +37,7 @@ RUN pip install --no-cache-dir -r requirements-docker.txt
 
 # ── App code (không bao gồm model weights) ───────────────────────────────────
 COPY pipeline/   ./pipeline/
+COPY api.py      ./api.py
 COPY demo.py     ./demo.py
 COPY run.py      ./run.py
 COPY test_export.py ./test_export.py

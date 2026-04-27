@@ -13,7 +13,13 @@ Pillow
 pypdfium2
 
 # Data export
+pandas
 openpyxl
 
 # Web UI
 gradio
+
+# API server runtime
+fastapi
+uvicorn
+python-multipart
