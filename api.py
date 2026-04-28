@@ -2,6 +2,7 @@ import os
 import shutil
 import tempfile
 import json
+import logging
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.responses import JSONResponse, FileResponse
 import uvicorn
@@ -15,6 +16,9 @@ app = FastAPI(
     description="API for extracting text and tables from images and PDFs using LightOnOCR-2-1B model.",
     version="1.0.0",
 )
+
+
+logger = logging.getLogger("lightonocr.api")
 
 
 @app.get("/")
@@ -71,6 +75,12 @@ async def extract_document(
             },
         }
     except Exception as e:
+        logger.exception(
+            "Unhandled error in /extract (file=%s, page_num=%s, max_tokens=%s)",
+            getattr(file, "filename", None),
+            page_num,
+            max_tokens,
+        )
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         if os.path.exists(file_path):
