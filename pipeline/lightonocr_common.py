@@ -126,13 +126,27 @@ def extract_ocr_from_image(
     temp_dir = tempfile.mkdtemp()
     json_path = Path(temp_dir) / f"{Path(source_name).stem}.json"
     excel_path = Path(temp_dir) / f"{Path(source_name).stem}.xlsx"
-    save_json([structured], str(json_path))
-    json_to_excel([structured], str(excel_path))
+
+    json_output_path = None
+    excel_output_path = None
+    export_errors = []
+
+    try:
+        json_output_path = save_json([structured], str(json_path))
+    except Exception as exc:
+        export_errors.append(f"JSON export failed: {exc}")
+
+    try:
+        excel_output_path = json_to_excel([structured], str(excel_path))
+    except Exception as exc:
+        export_errors.append(f"Excel export failed: {exc}")
 
     status = (
         f"✅ {source_name} | bảng={structured['table_count']} | "
         f"text={len(structured.get('text_lines', []))} | kv={len(structured.get('kv_pairs', {}))}"
     )
+    if export_errors:
+        status = f"{status} | {'; '.join(export_errors)}"
 
     import json
 
@@ -141,8 +155,8 @@ def extract_ocr_from_image(
         rendered_text=rendered_text,
         raw_text=raw_text,
         json_str=json.dumps(preview_json, ensure_ascii=False, indent=2),
-        json_path=str(json_path),
-        excel_path=str(excel_path),
+        json_path=json_output_path,
+        excel_path=excel_output_path,
     )
 
 
