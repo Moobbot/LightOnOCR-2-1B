@@ -3,12 +3,14 @@ import shutil
 import tempfile
 import json
 import logging
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.responses import JSONResponse, FileResponse
+from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 
 from pipeline.lightonocr_common import process_uploaded_document
-from pipeline.model import DEVICE
+from pipeline.model import DEVICE, get_model
 from pydantic import BaseModel
 
 app = FastAPI(
@@ -17,8 +19,35 @@ app = FastAPI(
     version="1.0.0",
 )
 
+_cors_origins_env = os.environ.get("CORS_ALLOW_ORIGINS", "*").strip()
+if _cors_origins_env == "*":
+    _cors_allow_origins = ["*"]
+else:
+    _cors_allow_origins = [
+        origin.strip() for origin in _cors_origins_env.split(",") if origin.strip()
+    ]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_cors_allow_origins,
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 logger = logging.getLogger("lightonocr.api")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Load the OCR model once at startup, keep it cached for the app lifetime."""
+    logger.info("Warming up OCR model at startup")
+    get_model()
+    yield
+
+
+app.router.lifespan_context = lifespan
 
 
 @app.get("/")
