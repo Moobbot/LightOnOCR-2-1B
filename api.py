@@ -63,6 +63,12 @@ async def extract_document(
     temperature: float = Form(0.2),
     max_tokens: int = Form(4096),
 ):
+    print("\n" + "="*80)
+    print(f"[TRACE Step 1] api.py: extract_document called.")
+    print(f"  - filename: {file.filename if file else 'None'}")
+    print(f"  - page_num: {page_num}, temp: {temperature}, max_tokens: {max_tokens}")
+    print("="*80 + "\n")
+
     if not file:
         raise HTTPException(status_code=400, detail="No file uploaded.")
 

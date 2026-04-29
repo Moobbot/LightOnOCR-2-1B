@@ -137,6 +137,11 @@ def extract_text(
 
     Logic  : tokenize → generate → decode → clean
     """
+    print("\n" + "="*80)
+    print(f"[TRACE Step 4] ocr_engine.py: extract_text called.")
+    print(f"  - prompt: {prompt}, max_tokens: {max_tokens}, temp: {temperature}")
+    print("="*80 + "\n")
+
     inputs = _prepare_inputs(processor, image, prompt)
 
     with torch.no_grad():

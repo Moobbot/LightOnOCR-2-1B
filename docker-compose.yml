@@ -31,6 +31,8 @@ services:
       - .:/weights:ro
       # Kết quả xuất ra host
       - ./outputs:/app/outputs
+      - ./api.py:/app/api.py:ro
+      - ./pipeline:/app/pipeline:ro
     environment:
       MODEL_PATH: /weights
       PYTORCH_ENABLE_MPS_FALLBACK: "1"

@@ -91,6 +91,11 @@ def extract_ocr_from_image(
     do_sample: bool | None = None,
 ) -> OCRBundle:
     """Run OCR on a single image and export structured results."""
+    print("\n" + "="*80)
+    print(f"[TRACE Step 3] lightonocr_common.py: extract_ocr_from_image called.")
+    print(f"  - source_name: {source_name}")
+    print("="*80 + "\n")
+
     if is_blank_page(image):
         return OCRBundle(
             status="⚠️ Ảnh trắng/rỗng — bỏ qua.",
@@ -168,6 +173,12 @@ def process_uploaded_document(
     max_tokens: int,
 ) -> tuple[LoadedDocument, OCRBundle]:
     """Load an uploaded file and run OCR in one pass."""
+    print("\n" + "="*80)
+    print(f"[TRACE Step 2] lightonocr_common.py: process_uploaded_document called.")
+    print(f"  - file_input: {file_input}")
+    print(f"  - page_num: {page_num}, prompt: {prompt}")
+    print("="*80 + "\n")
+
     loaded = load_uploaded_document(file_input, page_num)
     bundle = extract_ocr_from_image(
         loaded.image,
