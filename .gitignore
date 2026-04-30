@@ -5,6 +5,11 @@
 # thông qua .gitattributes — KHÔNG liệt kê ở đây.
 # ─────────────────────────────────────────────────────────────────────────────
 
+# Nếu bạn muốn tách file weights ra khỏi repo và tải khi lần đầu chạy,
+# hãy bỏ comment dòng bên dưới để tránh commit nhầm file lớn.
+# (Đồng thời set `MODEL_URL` để script tự tải khi cần.)
+model.safetensors
+
 # Output pipeline
 outputs/
 
