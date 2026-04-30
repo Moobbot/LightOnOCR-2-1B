@@ -23,10 +23,13 @@ ENV DEBIAN_FRONTEND=noninteractive
 # ── System dependencies ───────────────────────────────────────────────────────
 # libgl1 + libglib2.0 cần cho OpenCV/Pillow (PDF rendering)
 # git cần để cài transformers từ source
+# wget + unzip cần để tải model weights
 RUN apt-get update && apt-get install -y --no-install-recommends \
         libgl1-mesa-glx \
         libglib2.0-0 \
         git \
+        wget \
+        unzip \
     && rm -rf /var/lib/apt/lists/*
 
 # ── Python dependencies ───────────────────────────────────────────────────────
@@ -42,20 +45,26 @@ COPY demo.py     ./demo.py
 COPY run.py      ./run.py
 COPY test_export.py ./test_export.py
 
+# ── Runtime scripts ──────────────────────────────────────────────────────────
+COPY docker/entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
+
 # ── Runtime config ────────────────────────────────────────────────────────────
-# MODEL_PATH  : nơi mount model weights (override mặc định = thư mục hiện tại)
+# MODEL_PATH  : nơi mount model weights (override mặc định = /app/model)
 # GRADIO_HOST : 0.0.0.0 để expose ra ngoài container
 # GRADIO_PORT : port Gradio (mặc định 7860)
-ENV MODEL_PATH=/weights \
+ENV MODEL_PATH=/app/model \
     GRADIO_HOST=0.0.0.0 \
     GRADIO_PORT=7860
 
 EXPOSE 7860
 
 # Volumes:
-#   /weights  — model weights (mount read-only)
+#   /app/model   — model weights (persistent storage)
 #   /app/outputs — kết quả batch (mount read-write)
-VOLUME ["/weights", "/app/outputs"]
+VOLUME ["/app/model", "/app/outputs"]
+
+ENTRYPOINT ["/app/entrypoint.sh"]
 
 # Mặc định chạy web demo; override bằng --entrypoint hoặc command
 CMD ["python", "demo.py"]
