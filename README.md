@@ -36,6 +36,7 @@ LightOnOCR-2-1B/
 ├── test_export.py              # Test nhanh: re-parse JSON → Excel
 │
 ├── setup_env.bat               # Cài đặt môi trường Conda (Windows)
+├── setup_env.sh                # Cài đặt môi trường Conda (Linux)
 ├── requirements.txt            # Danh sách thư viện Python
 │
 ├── app.py                      # (HuggingFace Spaces — không dùng local)
@@ -87,15 +88,33 @@ conda activate extract-pdf
 pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
 ```
 
-### Bước 3 — Cài các thư viện còn lại
+### Bước 3 — Cài các thư viện còn lại và Tải Model
 
+Bạn nên sử dụng script cài đặt tự động để tối ưu hóa quá trình:
+
+**Trên Windows:**
 ```powershell
+.\setup_env.bat
+```
+
+**Trên Linux:**
+```bash
+bash setup_env.sh
+```
+
+Các script này sẽ:
+- Cài đặt PyTorch (CUDA 12.1), Transformers và các thư viện cần thiết.
+- **Tự động tải model weights** (~2GB) từ GitHub Releases và giải nén vào thư mục gốc nếu chưa có.
+
+Hoặc nếu muốn cài thủ công:
+
+```bash
 pip install -r requirements.txt
 ```
 
 ### Kiểm tra
 
-```powershell
+```bash
 python -c "import torch; print('CUDA:', torch.cuda.is_available())"
 ```
 
