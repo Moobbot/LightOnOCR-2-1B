@@ -3,48 +3,111 @@ set -e
 
 # ============================================================
 # LightOnOCR-2-1B Entrypoint Script
-# Checks for model weights and downloads them if missing.
+# Checks for required model files and downloads if missing.
 # ============================================================
 
-MODEL_FILE="model.safetensors"
 MODEL_URL="https://github.com/Moobbot/LightOnOCR-2-1B/releases/download/v-1.0.0/model.zip"
 
 # Sử dụng MODEL_PATH từ environment, mặc định là /app/model
 TARGET_DIR="${MODEL_PATH:-/app/model}"
+
+# Các file bắt buộc phải có (và không được rỗng)
+REQUIRED_FILES=(
+    "model.safetensors"
+    "tokenizer.json"
+    "tokenizer_config.json"
+    "processor_config.json"
+)
+
+# Các file JSON cần kiểm tra tính hợp lệ (parse được)
+JSON_FILES=(
+    "tokenizer.json"
+    "tokenizer_config.json"
+    "processor_config.json"
+    "config.json"
+)
 
 echo "------------------------------------------------------------"
 echo "LightOnOCR-2-1B Startup"
 echo "Target directory: $TARGET_DIR"
 echo "------------------------------------------------------------"
 
-if [ ! -f "$TARGET_DIR/$MODEL_FILE" ]; then
-    echo "[INFO] $MODEL_FILE not found in $TARGET_DIR."
-    echo "[INFO] Initializing model download (approx. 2GB)..."
-    
+# ── Kiểm tra đủ file và không rỗng ──────────────────────────
+_needs_download=0
+
+if [ "${FORCE_DOWNLOAD:-0}" = "1" ]; then
+    echo "[INFO] FORCE_DOWNLOAD=1 — Bỏ qua kiểm tra, tải lại model."
+    _needs_download=1
+fi
+
+if [ "$_needs_download" = "0" ]; then
+    for f in "${REQUIRED_FILES[@]}"; do
+        fpath="$TARGET_DIR/$f"
+        if [ ! -f "$fpath" ]; then
+            echo "[WARN] File bắt buộc không tìm thấy: $f"
+            _needs_download=1
+            break
+        fi
+        # Kiểm tra file không rỗng
+        if [ ! -s "$fpath" ]; then
+            echo "[WARN] File bị rỗng (0 bytes): $f — cần tải lại."
+            _needs_download=1
+            break
+        fi
+    done
+fi
+
+# ── Kiểm tra JSON hợp lệ (phát hiện file corrupt) ───────────
+if [ "$_needs_download" = "0" ]; then
+    for f in "${JSON_FILES[@]}"; do
+        fpath="$TARGET_DIR/$f"
+        if [ -f "$fpath" ]; then
+            if ! python3 -c "import json, sys; json.load(open('$fpath'))" 2>/dev/null; then
+                echo "[WARN] File JSON bị corrupt: $f — cần tải lại."
+                _needs_download=1
+                break
+            fi
+        fi
+    done
+fi
+
+if [ "$_needs_download" = "0" ]; then
+    echo "[INFO] Tất cả file model đã có. Bỏ qua download."
+else
+    echo "[INFO] Khởi tạo tải model (~2GB từ GitHub)..."
     mkdir -p "$TARGET_DIR"
-    
-    # Kiểm tra xem file zip đã có chưa (phòng trường hợp restart)
-    if [ ! -f "/tmp/model.zip" ]; then
-        echo "[INFO] Downloading model.zip from GitHub..."
-        wget -O /tmp/model.zip "$MODEL_URL"
+
+    # Dùng file zip tạm nếu chưa có (tránh tải lại khi restart)
+    if [ ! -f "/tmp/model.zip" ] || [ ! -s "/tmp/model.zip" ]; then
+        echo "[INFO] Đang tải model.zip..."
+        wget --show-progress -O /tmp/model.zip "$MODEL_URL"
         if [ $? -ne 0 ]; then
-            echo "[ERROR] Failed to download model weights."
+            echo "[ERROR] Tải model thất bại."
             exit 1
         fi
+    else
+        echo "[INFO] Dùng lại /tmp/model.zip đã có."
     fi
-    
-    echo "[INFO] Extracting model.zip to $TARGET_DIR..."
+
+    echo "[INFO] Giải nén vào $TARGET_DIR..."
     unzip -o /tmp/model.zip -d "$TARGET_DIR"
     if [ $? -ne 0 ]; then
-        echo "[ERROR] Failed to extract model weights."
+        echo "[ERROR] Giải nén thất bại."
         exit 1
     fi
-    
-    echo "[INFO] Cleaning up..."
+
     rm -f /tmp/model.zip
-    echo "[OK] Model weights initialized successfully."
-else
-    echo "[INFO] Model weights already present. Skipping download."
+    echo "[OK] Model đã sẵn sàng."
+
+    # Xác nhận lại sau khi giải nén
+    for f in "${REQUIRED_FILES[@]}"; do
+        fpath="$TARGET_DIR/$f"
+        if [ ! -f "$fpath" ] || [ ! -s "$fpath" ]; then
+            echo "[ERROR] File vẫn thiếu hoặc rỗng sau khi giải nén: $f"
+            echo "[ERROR] Kiểm tra nội dung model.zip trên GitHub."
+            exit 1
+        fi
+    done
 fi
 
 echo "------------------------------------------------------------"
