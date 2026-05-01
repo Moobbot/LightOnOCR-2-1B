@@ -51,8 +51,8 @@ services:
     ports:
       - "${API_PORT:-7861}:7861"
     volumes:
-      - .:/app/model:ro
-      - ./outputs:/app/outputs
+      - model_data:/app/model
+      - ./outputs:/app/outputs    
     environment:
       <<: *common-env
       MODEL_PATH: /app/model
@@ -84,8 +84,8 @@ services:
     ports:
       - "7860:7860"
     volumes:
-      - .:/app/model:ro
-      - ./outputs:/app/outputs
+      - model_data:/app/model
+      - ./outputs:/app/outputs    
     environment:
       <<: *common-env
       MODEL_PATH: /app/model
@@ -117,7 +117,7 @@ services:
     image: lightonocr:latest
     container_name: lightonocr-batch
     volumes:
-      - .:/app/model:ro
+      - model_data:/app/model
       - ./datasets:/data:ro
       - ./outputs:/app/outputs
     environment:
@@ -128,3 +128,5 @@ services:
       - batch
     entrypoint: ["python", "run.py"]
     command: ["--input", "/data", "--output-dir", "/app/outputs"]
+volumes:
+    model_data:
