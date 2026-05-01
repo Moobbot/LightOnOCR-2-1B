@@ -9,34 +9,41 @@ INPUT  : model, processor (từ pipeline.model.get_model)
 OUTPUT : str — văn bản OCR đã làm sạch
 
 Hàm hỗ trợ:
-  - is_blank_page   : phát hiện trang trắng
-  - clean_output_text: loại bỏ template markers
+  is_blank_page    : phát hiện trang trắng
+  clean_output_text: loại bỏ template markers từ output của model
 """
 
 from __future__ import annotations
+
+import logging
 
 import torch
 from PIL import Image
 
 from .model import DEVICE, DTYPE
 
+logger = logging.getLogger("lightonocr.ocr_engine")
 
-# =============================================================================
-# LOGIC — Tiền xử lý / hậu xử lý
-# =============================================================================
+
+# ---------------------------------------------------------------------------
+# Tiền / hậu xử lý
+# ---------------------------------------------------------------------------
 
 
 def is_blank_page(image: Image.Image, threshold: float = 0.99) -> bool:
-    """
-    INPUT  : PIL Image, ngưỡng tỉ lệ pixel trắng
-    OUTPUT : True nếu trang trắng/rỗng (cần bỏ qua)
+    """Kiểm tra trang trắng/rỗng.
 
-    Logic  : tính tỉ lệ pixel sáng (≥ 250) trên toàn ảnh grayscale
+    Args:
+        image: Ảnh PIL cần kiểm tra.
+        threshold: Tỉ lệ pixel sáng (≥ 250) để coi là trang trắng (mặc định 0.99).
+
+    Returns:
+        True nếu trang được coi là trắng/rỗng.
     """
     gray = image.convert("L")
     min_val, max_val = gray.getextrema()
 
-    # Màu đồng nhất (ảnh hoàn toàn trắng hoặc màu đặc)
+    # Ảnh đồng màu hoàn toàn
     if min_val == max_val:
         return max_val > 250
 
@@ -47,19 +54,22 @@ def is_blank_page(image: Image.Image, threshold: float = 0.99) -> bool:
 
 
 def clean_output_text(text: str) -> str:
-    """
-    INPUT  : raw output từ model (có thể chứa role markers)
-    OUTPUT : văn bản sạch
+    """Làm sạch output của model, loại bỏ role markers.
 
-    Logic  : loại dòng chứa 'system'/'user'/'assistant';
-             nếu có 'assistant', lấy phần sau nó
+    Args:
+        text: Văn bản thô từ model (có thể chứa 'system'/'user'/'assistant').
+
+    Returns:
+        Văn bản đã làm sạch.
     """
     markers = {"system", "user", "assistant"}
     lines = text.split("\n")
-    cleaned_lines = [l for l in lines if l.strip().lower() not in markers]
+    cleaned_lines = [ln for ln in lines if ln.strip().lower() not in markers]
     cleaned = "\n".join(cleaned_lines).strip()
 
-    if "assistant" in text.lower():
+    # Nếu có 'assistant', lấy phần nội dung sau nó
+    lower_text = text.lower()
+    if "assistant" in lower_text:
         parts = text.split("assistant", 1)
         if len(parts) > 1:
             cleaned = parts[1].strip()
@@ -67,13 +77,21 @@ def clean_output_text(text: str) -> str:
     return cleaned
 
 
-def _prepare_inputs(processor, image: Image.Image, prompt: str) -> dict:
-    """
-    INPUT  : processor, PIL Image
-    OUTPUT : dict of tensors đã chuyển về đúng device/dtype
+# ---------------------------------------------------------------------------
+# Chuẩn bị đầu vào
+# ---------------------------------------------------------------------------
 
-    Logic  : Process image + text qua processor
-             (LightOnOcrProcessor không có apply_chat_template)
+
+def _prepare_inputs(processor, image: Image.Image, prompt: str) -> dict:
+    """Chuẩn bị tensor đầu vào cho model.
+
+    Args:
+        processor: LightOnOcrProcessor.
+        image: Ảnh PIL.
+        prompt: Câu lệnh OCR.
+
+    Returns:
+        dict các tensors đã chuyển sang đúng device / dtype.
     """
     if hasattr(processor, "apply_chat_template"):
         chat = [
@@ -99,21 +117,20 @@ def _prepare_inputs(processor, image: Image.Image, prompt: str) -> dict:
             return_tensors="pt",
         )
 
-    # Move to device + convert dtype
+    _float_dtypes = (torch.float32, torch.float16, torch.bfloat16)
     return {
         k: (
             v.to(device=DEVICE, dtype=DTYPE)
-            if isinstance(v, torch.Tensor)
-            and v.dtype in (torch.float32, torch.float16, torch.bfloat16)
+            if isinstance(v, torch.Tensor) and v.dtype in _float_dtypes
             else v.to(DEVICE) if isinstance(v, torch.Tensor) else v
         )
         for k, v in inputs.items()
     }
 
 
-# =============================================================================
-# OUTPUT — Chạy inference
-# =============================================================================
+# ---------------------------------------------------------------------------
+# Inference
+# ---------------------------------------------------------------------------
 
 
 def extract_text(
@@ -126,21 +143,28 @@ def extract_text(
     top_p: float = 0.9,
     do_sample: bool = False,
 ) -> str:
-    """
-    INPUT  : model, processor (từ get_model())
-             image       — PIL Image cần OCR
-             max_tokens  — giới hạn token sinh ra
-             temperature — độ ngẫu nhiên (0 = deterministic)
-             top_p       — nucleus sampling (dùng khi do_sample=True, khuyến nghị 0.9)
-             do_sample   — True để dùng sampling, False để greedy
-    OUTPUT : str — văn bản OCR đã làm sạch
+    """Chạy OCR inference trên một ảnh.
 
-    Logic  : tokenize → generate → decode → clean
+    Args:
+        model: LightOnOcrForConditionalGeneration đã load.
+        processor: LightOnOcrProcessor đã load.
+        image: Ảnh PIL cần OCR.
+        prompt: Câu lệnh hướng dẫn model.
+        max_tokens: Giới hạn số token sinh ra.
+        temperature: Độ ngẫu nhiên (0 = greedy/deterministic).
+        top_p: Ngưỡng nucleus sampling (chỉ dùng khi do_sample=True).
+        do_sample: True để dùng sampling, False để greedy decoding.
+
+    Returns:
+        Văn bản OCR đã làm sạch.
     """
-    print("\n" + "="*80)
-    print(f"[TRACE Step 4] ocr_engine.py: extract_text called.")
-    print(f"  - prompt: {prompt}, max_tokens: {max_tokens}, temp: {temperature}")
-    print("="*80 + "\n")
+    logger.debug(
+        "extract_text | prompt_len=%d | max_tokens=%d | temperature=%.2f | do_sample=%s",
+        len(prompt),
+        max_tokens,
+        temperature,
+        do_sample,
+    )
 
     inputs = _prepare_inputs(processor, image, prompt)
 
@@ -158,4 +182,5 @@ def extract_text(
     generated_ids = outputs[0][input_len:]
     raw_text = processor.decode(generated_ids, skip_special_tokens=True)
 
+    logger.debug("extract_text | output_tokens=%d", len(generated_ids))
     return clean_output_text(raw_text)

@@ -1,52 +1,48 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# docker-compose.yml — LightOnOCR-2-1B (GPU — mặc định)
+# docker-compose.cpu.yml — LightOnOCR-2-1B (CPU — standalone)
 #
-# Yêu cầu: nvidia-container-toolkit đã cài trên host.
-# https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html
+# Dùng file này khi máy KHÔNG có GPU NVIDIA.
+# File này HOÀN CHỈNH, không cần docker-compose.yml làm base.
 #
 # Cách khởi động:
-#   docker compose up -d --build                # API server (GPU)
-#   docker compose --profile demo up -d demo    # Gradio UI (GPU)
-#   docker compose --profile batch run --rm batch \
-#     --input /data --output-name result        # Batch CLI (GPU)
+#   docker compose -f docker-compose.cpu.yml up -d --build         # API server
+#   docker compose -f docker-compose.cpu.yml --profile demo up -d  # Gradio UI
+#   docker compose -f docker-compose.cpu.yml \
+#     --input /data --output-name result                            # Batch CLI
 #
-# ❌ Không có GPU? Dùng file CPU thay thế:
-#   docker compose -f docker-compose.cpu.yml up -d --build
+# ⚠️ Yêu cầu tài nguyên (CPU mode):
+#   - Model tải vào RAM: ~4.5 GB (float32).
+#   - RAM khi inference (OCR): ~6-7 GB (attention buffers + output tokens).
+#   - Docker Desktop PHẢI được cấp ≥ 8 GB RAM:
+#       Docker Desktop → Settings → Resources → Memory → 8 GB → Apply & Restart
+#   - Thời gian load model: ~30–60 giây. OCR mỗi ảnh: ~60–120 giây.
 #
-# Biến môi trường (override trong .env):
-#   LIGHTONOCR_DEVICE : auto | gpu | cpu  (mặc định: auto)
-#   LIGHTONOCR_DTYPE  : auto | bfloat16 | float32  (mặc định: auto)
-#   LOG_LEVEL         : DEBUG | INFO | WARNING | ERROR  (mặc định: INFO)
+# ✅ Có GPU? Dùng file mặc định:
+#   docker compose up -d --build
 # ─────────────────────────────────────────────────────────────────────────────
 
 name: lightonocr
 
-# ── Anchor chung cho GPU deploy ───────────────────────────────────────────────
-x-gpu-deploy: &gpu-deploy
-  deploy:
-    resources:
-      reservations:
-        devices:
-          - driver: nvidia
-            count: 1
-            capabilities: [gpu]
-
-# ── Anchor biến môi trường chung ─────────────────────────────────────────────
-x-common-env: &common-env
-  LIGHTONOCR_DEVICE: ${LIGHTONOCR_DEVICE:-auto}
-  LIGHTONOCR_DTYPE: ${LIGHTONOCR_DTYPE:-auto}
+# ── Anchor biến môi trường CPU ────────────────────────────────────────────────
+x-cpu-env: &cpu-env
+  MODEL_PATH: /app/model
+  LIGHTONOCR_DEVICE: cpu
+  LIGHTONOCR_DTYPE: float32
   LOG_LEVEL: ${LOG_LEVEL:-INFO}
   PYTORCH_ENABLE_MPS_FALLBACK: "1"
+
+# ── Anchor build chung ────────────────────────────────────────────────────────
+x-build: &build
+  build:
+    context: .
+    dockerfile: docker/Dockerfile
+  image: lightonocr:latest
 
 services:
 
   # ── FastAPI REST Server ───────────────────────────────────────────────────
-  # Endpoint chính — http://localhost:7861/extract
   api:
-    build:
-      context: .
-      dockerfile: docker/Dockerfile
-    image: lightonocr:latest
+    <<: *build
     container_name: lightonocr-api
     ports:
       - "${API_PORT:-7861}:7861"
@@ -54,12 +50,10 @@ services:
       - .:/app/model:ro
       - ./outputs:/app/outputs
     environment:
-      <<: *common-env
-      MODEL_PATH: /app/model
+      <<: *cpu-env
       API_HOST: 0.0.0.0
       API_PORT: "7861"
       CORS_ALLOW_ORIGINS: ${CORS_ALLOW_ORIGINS:-*}
-    <<: *gpu-deploy
     healthcheck:
       test:
         [
@@ -69,17 +63,13 @@ services:
       interval: 30s
       timeout: 10s
       retries: 5
-      start_period: 60s
+      start_period: 120s   # CPU load model lâu hơn GPU
     restart: unless-stopped
     command: ["python", "api.py"]
 
   # ── Web Demo (Gradio) ─────────────────────────────────────────────────────
-  # Chỉ khởi động với: docker compose --profile demo up -d demo
   demo:
-    build:
-      context: .
-      dockerfile: docker/Dockerfile
-    image: lightonocr:latest
+    <<: *build
     container_name: lightonocr-demo
     ports:
       - "7860:7860"
@@ -87,11 +77,9 @@ services:
       - .:/app/model:ro
       - ./outputs:/app/outputs
     environment:
-      <<: *common-env
-      MODEL_PATH: /app/model
+      <<: *cpu-env
       GRADIO_HOST: "0.0.0.0"
       GRADIO_PORT: "7860"
-    <<: *gpu-deploy
     healthcheck:
       test:
         [
@@ -101,29 +89,22 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 60s
+      start_period: 120s
     restart: unless-stopped
     profiles:
       - demo
     command: ["python", "demo.py"]
 
   # ── Batch CLI ─────────────────────────────────────────────────────────────
-  # Chạy: docker compose --profile batch run --rm batch \
-  #         --input /data --output-name result
   batch:
-    build:
-      context: .
-      dockerfile: docker/Dockerfile
-    image: lightonocr:latest
+    <<: *build
     container_name: lightonocr-batch
     volumes:
       - .:/app/model:ro
       - ./datasets:/data:ro
       - ./outputs:/app/outputs
     environment:
-      <<: *common-env
-      MODEL_PATH: /app/model
-    <<: *gpu-deploy
+      <<: *cpu-env
     profiles:
       - batch
     entrypoint: ["python", "run.py"]

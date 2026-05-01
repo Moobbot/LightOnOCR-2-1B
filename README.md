@@ -1,18 +1,18 @@
 # LightOnOCR-2-1B — Local Pipeline
 
-> Bản README này mô tả pipeline **local** được xây dựng trên nền model **LightOnOCR-2-1B** của [LightOn AI](https://lighton.ai).
+> Pipeline OCR cục bộ xây dựng trên model **LightOnOCR-2-1B** của [LightOn AI](https://lighton.ai).  
 > Model gốc: [lightonai/LightOnOCR-2-1B](https://huggingface.co/lightonai/LightOnOCR-2-1B)
 
 ---
 
 ## Tổng quan
 
-Pipeline OCR cục bộ dùng để:
+Pipeline OCR cục bộ, chạy **hoàn toàn offline**, dùng để:
 
 - Trích xuất văn bản từ **ảnh** (JPG, PNG, BMP, WEBP) và **file PDF**
 - Tự động parse **bảng HTML/Markdown** và **cặp Key-Value**
 - Xuất kết quả ra **JSON** và **Excel (.xlsx)**
-- Chạy hoàn toàn **offline** trên máy local (GPU CUDA hoặc CPU)
+- Chạy trên **GPU NVIDIA (CUDA)** hoặc **CPU**
 
 ---
 
@@ -23,145 +23,302 @@ LightOnOCR-2-1B/
 │
 ├── pipeline/                   # Thư viện xử lý lõi
 │   ├── __init__.py
-│   ├── model.py                # Load model (singleton, auto device)
+│   ├── model.py                # Load model singleton (env-driven device/dtype)
 │   ├── ocr_engine.py           # OCR inference + blank page detection
 │   ├── pdf_renderer.py         # Render PDF → PIL Image (pypdfium2)
-│   ├── table_parser.py         # Parse HTML table / Markdown table / text lines / KV
-│   └── exporter.py             # Xuất JSON và Excel (4 bước rõ ràng)
+│   ├── lightonocr_common.py    # Shared helpers (load, run, export)
+│   ├── table_parser.py         # Parse HTML/Markdown table, text lines, KV
+│   └── exporter.py             # Xuất JSON và Excel
 │
-├── app_server.py               # FastAPI + Gradio Server (chạy cả UI + REST API)
-├── demo.py                     # Gradio UI riêng lẻ (legacy)
-├── api_server.py               # FastAPI REST API riêng (deprecated — dùng app_server.py)
+├── api.py                      # FastAPI REST API server (port 7861)
+├── demo.py                     # Gradio web UI (port 7860)
 ├── run.py                      # CLI batch processor
-├── test_export.py              # Test nhanh: re-parse JSON → Excel
+├── test_export.py              # Test re-parse JSON → Excel
 │
+├── docker/
+│   ├── Dockerfile              # Image definition
+│   ├── entrypoint.sh           # Auto-download model weights nếu chưa có
+│   └── requirements-docker.txt
+│
+├── docker-compose.yml          # Orchestration (api / demo / batch)
+├── .env.example                # Mẫu biến môi trường
+├── requirements.txt            # Thư viện cho chạy local (Conda)
 ├── setup_env.bat               # Cài đặt môi trường Conda (Windows)
 ├── setup_env.sh                # Cài đặt môi trường Conda (Linux)
-├── requirements.txt            # Danh sách thư viện Python
-│
-├── app.py                      # (HuggingFace Spaces — không dùng local)
 └── [Model files]               # model.safetensors, tokenizer.json, config.json...
 ```
 
 ---
 
-## Cài đặt môi trường
+## Biến môi trường
 
-### Phương án A — Docker (khuyến nghị cho production)
+| Biến | Mặc định | Mô tả |
+|---|---|---|
+| `MODEL_PATH` | _(thư mục hiện tại)_ | Đường dẫn tới model weights |
+| `LIGHTONOCR_DEVICE` | `auto` | `cpu` / `gpu` / `auto` |
+| `LIGHTONOCR_DTYPE` | `auto` | `float32` / `bfloat16` / `auto` |
+| `API_HOST` | `0.0.0.0` | Host bind của FastAPI |
+| `API_PORT` | `7861` | Port của FastAPI |
+| `CORS_ALLOW_ORIGINS` | `*` | Origin được phép CORS |
+| `LOG_LEVEL` | `INFO` | `DEBUG` / `INFO` / `WARNING` / `ERROR` |
 
-**Yêu cầu:** Docker + [nvidia-container-toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html)
+> **Ghi chú về device/dtype:**
+> - `LIGHTONOCR_DEVICE=auto` → tự chọn GPU nếu có, ngược lại CPU.
+> - `LIGHTONOCR_DTYPE=auto` → `bfloat16` trên GPU (tiết kiệm VRAM ~50%), `float32` trên CPU.
+> - Khi chạy CPU, model chiếm khoảng **~4.5 GB RAM** (float32). Đảm bảo Docker Desktop được cấp đủ RAM.
+
+Sao chép file `.env.example` thành `.env` và chỉnh sửa theo nhu cầu:
 
 ```bash
-# Build image (chỉ copy app code, không copy model weights)
-docker build -f docker/Dockerfile -t lightonocr:latest .
-
-# Chạy Web Demo
-docker compose up demo
-# → Mở http://localhost:7860
-
-# Chạy CLI batch
-docker compose run --rm batch --input /data --output-name result
+cp .env.example .env
 ```
 
-> **Model weights** được mount từ thư mục hiện tại (`.`) vào `/weights` bên trong container — không bake vào image.
+---
+
+## Cài đặt
+
+### Phương án A — Docker (khuyến nghị)
+
+**Yêu cầu:** Docker Desktop (hoặc Docker Engine + Compose plugin).
+
+Dự án cung cấp **hai file Compose** tương ứng với hai chế độ chạy:
+
+| File | Chế độ | Yêu cầu |
+|---|---|---|
+| `docker-compose.yml` | **GPU** (mặc định) | nvidia-container-toolkit |
+| `docker-compose.cpu.yml` | **CPU** (override) | Không cần GPU |
+
+---
+
+#### 🟢 Chạy với GPU (mặc định)
+
+Yêu cầu [nvidia-container-toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html) đã cài trên host.
+
+```bash
+# API server
+docker compose up -d --build
+
+# Gradio UI
+docker compose --profile demo up -d demo
+
+# Batch CLI
+docker compose --profile batch run --rm batch \
+  --input /data --output-name result
+```
+
+> Model chiếm ~2.3 GB VRAM (bfloat16). Nhanh hơn CPU ~5–10 lần.
+
+---
+
+#### 🔵 Chạy với CPU (không cần GPU)
+
+```bash
+# API server
+docker compose -f docker-compose.cpu.yml up -d --build
+
+# Gradio UI
+docker compose -f docker-compose.cpu.yml --profile demo up -d demo
+
+# Batch CLI
+docker compose -f docker-compose.cpu.yml \
+  --profile batch run --rm batch \
+  --input /data --output-name result
+```
+
+> ⚠️ **Yêu cầu tài nguyên bắt buộc (CPU mode)**
+>
+> Model LightOnOCR-2-1B chiếm RAM rất lớn khi chạy trên CPU:
+>
+> | Thành phần | RAM |
+> |---|---|
+> | Model weights (float32) | ~4.6 GB |
+> | KV cache (4096 tokens) | ~1.8 GB |
+> | Input image tensors | ~0.3 GB |
+> | OS + Docker overhead | ~0.5 GB |
+> | **Tổng cần tối thiểu** | **~7.2 GB** |
+>
+> → Docker Desktop **phải được cấp ≥ 12 GB RAM**. Nếu thiếu, container sẽ **tự động restart** (OOM Killer) ngay khi bắt đầu xử lý ảnh, dù khởi động thành công.
+
+#### Cách cấp đủ RAM cho Docker (Windows — WSL2 backend)
+
+**Bước 1** — Tạo hoặc sửa file `C:\Users\<tên_user>\.wslconfig`:
+
+```ini
+[wsl2]
+memory=12GB
+processors=4
+swap=8GB
+```
+
+**Bước 2** — Áp dụng cấu hình:
+
+```powershell
+wsl --shutdown
+# Sau đó mở lại Docker Desktop, chờ khởi động xong
+```
+
+**Bước 3** — Xác nhận RAM đã được tăng:
+
+```powershell
+docker info --format "{{.MemTotal}}"
+# Kết quả mong đợi: ≥ 12548165632 (~12 GB)
+```
+
+---
+
+#### Kiểm tra & Logs
+
+```bash
+docker compose ps
+docker compose logs -f api
+```
+
+API sẵn sàng tại:
+- Health check: `http://localhost:7861/`
+- OCR endpoint: `POST http://localhost:7861/extract`
+- API docs: `http://localhost:7861/docs`
+
+#### Tắt hệ thống
+
+```bash
+docker compose down
+```
 
 ---
 
 ### Phương án B — Conda (local development)
 
-### Yêu cầu
-
+**Yêu cầu:**
 - Python 3.10+
 - Conda (Miniconda / Anaconda)
-- GPU NVIDIA với CUDA 12.x _(khuyến nghị, CPU cũng chạy được nhưng chậm)_
+- GPU NVIDIA CUDA 12.x _(khuyến nghị — CPU cũng chạy được nhưng chậm)_
 
-### Bước 1 — Tạo môi trường
+#### Bước 1 — Tạo môi trường
 
 ```powershell
 conda create -n extract-pdf python=3.10 -y
 conda activate extract-pdf
 ```
 
-### Bước 2 — Cài PyTorch (CUDA 12.1)
+#### Bước 2 — Cài PyTorch (CUDA 12.1)
 
 ```powershell
 pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
 ```
 
-### Bước 3 — Cài các thư viện còn lại và Tải Model
+#### Bước 3 — Cài thư viện và tải model
 
-Bạn nên sử dụng script cài đặt tự động để tối ưu hóa quá trình:
-
-**Trên Windows:**
+**Windows:**
 ```powershell
 .\setup_env.bat
 ```
 
-**Trên Linux:**
+**Linux/macOS:**
 ```bash
 bash setup_env.sh
 ```
 
-Các script này sẽ:
-- Cài đặt PyTorch (CUDA 12.1), Transformers và các thư viện cần thiết.
-- **Tự động tải model weights** (~2GB) từ GitHub Releases và giải nén vào thư mục gốc nếu chưa có.
+Script sẽ tự động:
+- Cài đặt các thư viện Python từ `requirements.txt`
+- Tải model weights (~2 GB) từ GitHub Releases nếu chưa có
 
-Hoặc nếu muốn cài thủ công:
-
+Hoặc cài thủ công:
 ```bash
 pip install -r requirements.txt
 ```
 
-### Kiểm tra
+#### Kiểm tra
 
 ```bash
 python -c "import torch; print('CUDA:', torch.cuda.is_available())"
 ```
 
+---
+
 ## Sử dụng
 
-### 1. FastAPI + Gradio Server (chạy cả UI + REST API)
+### 1. REST API Server (FastAPI)
 
-**Khuyến nghị:** Dùng `app_server.py` — gộp Gradio UI + FastAPI REST API vào một server duy nhất.
-
-```powershell
+```bash
 conda activate extract-pdf
 cd LightOnOCR-2-1B
-python app_server.py --host 0.0.0.0 --port 7860
+python api.py
 ```
 
-Mặc định chạy trên **http://localhost:7860**
+Server chạy tại `http://localhost:7861`
 
-**Tính năng:**
+**Endpoints:**
 
-- **Gradio UI** (tại `/`): Upload ảnh/PDF, OCR, hiển thị kết quả, tải xuống JSON/Excel
-- **REST API** (tại `/ocr`): `POST /ocr` cho các ứng dụng khác gọi tới
-- **Docs**: Xem API docs tại `http://localhost:7860/docs`
-- **Health check**: `GET /health`
+| Method | Path | Mô tả |
+|---|---|---|
+| `GET` | `/` | Health check + thông tin device |
+| `POST` | `/extract` | OCR file ảnh hoặc PDF |
+| `POST` | `/download` | Tải file output (JSON/Excel) |
+
+**Ví dụ gọi `/extract`:**
+
+```bash
+curl -X POST http://localhost:7861/extract \
+  -F "file=@image.jpg" \
+  -F "page_num=1" \
+  -F "max_tokens=4096"
+```
+
+**Response:**
+
+```json
+{
+  "status": "OK | source=image.jpg | tables=1 | text_lines=5 | kv_pairs=3",
+  "rendered_text": "...",
+  "raw_text": "...",
+  "data": { "tables": [...], "text_lines": [...], "kv_pairs": {...} },
+  "json_path": "/tmp/.../image.json",
+  "excel_path": "/tmp/.../image.xlsx",
+  "file_info": {
+    "source_name": "image.jpg",
+    "page_info": "image.jpg",
+    "total_pages": 1,
+    "actual_page": 1,
+    "is_pdf": false
+  }
+}
+```
+
+#### Kết nối từ extract-pdf
+
+Trong file `extract-pdf/ui-config.json`, cấu hình profile:
+
+```json
+{
+  "id": "lightonocr-2-1b",
+  "agent": "lightonocr",
+  "base_url": "http://127.0.0.1:7861/extract"
+}
+```
+
+Hoặc trong `extract-pdf/.env`:
+
+```env
+LOCAL_HTTP_BASE_URL=http://lightonocr:7861/extract  # Docker network
+# LOCAL_HTTP_BASE_URL=http://127.0.0.1:7861/extract  # Local
+```
 
 ---
 
-### 2. Gradio Web UI (Legacy — nếu chỉ muốn UI, không cần REST API)
+### 2. Gradio Web UI
 
-- Upload ảnh hoặc PDF (có slider chọn trang)
-- OCR → hiển thị văn bản rendered (Markdown/bảng/LaTeX)
-- Raw text, JSON cấu trúc, tải xuống `.json` + `.xlsx`
-
-```powershell
+```bash
 conda activate extract-pdf
 cd LightOnOCR-2-1B
 python demo.py
+# → http://localhost:7860
 ```
-
-Mở trình duyệt tại **http://localhost:7860**
-
-> **Lưu ý:** Đây là cách chạy Gradio riêng lẻ (không có REST API). Nên dùng `python app_server.py` nếu muốn cả UI + API.
 
 ---
 
-### 3. CLI Batch (xử lý hàng loạt)
+### 3. CLI Batch
 
-```powershell
+```bash
 conda activate extract-pdf
 cd LightOnOCR-2-1B
 
@@ -171,109 +328,35 @@ python run.py --input ..\datasets\Trang000001.jpg
 # Một PDF (tất cả trang)
 python run.py --input ..\datasets\document.pdf
 
-# Thư mục (không đệ quy)
+# Thư mục
 python run.py --input ..\datasets\ --output-dir outputs --output-name batch_01
 
 # Thư mục đệ quy
 python run.py --input ..\datasets\ --recursive --output-name all_results
 
 # Tùy chỉnh token limit
-python run.py --input ..\datasets\ --max-tokens 16384
+python run.py --input ..\datasets\ --max-tokens 8192
 ```
 
 **Output:** `outputs/<output-name>.json` và `outputs/<output-name>.xlsx`
 
-#### Tham số CLI
+**Tham số CLI:**
 
-| Tham số             | Mặc định     | Mô tả                                |
-| ------------------- | ------------ | ------------------------------------ |
-| `--input`           | _(bắt buộc)_ | File ảnh, PDF, hoặc thư mục          |
-| `--output-dir`      | `outputs`    | Thư mục lưu kết quả                  |
-| `--output-name`     | `result`     | Tên file output (không có extension) |
-| `--max-tokens`      | `8192`       | Giới hạn token mỗi trang             |
-| `--recursive`       | False        | Quét thư mục đệ quy                  |
-| `--blank-threshold` | `0.99`       | Ngưỡng phát hiện trang trắng         |
-| `--no-skip-blank`   | False        | Không bỏ qua trang trắng             |
-
----
-
-### 4. REST API Server (Legacy — nếu chỉ muốn API, không cần UI)
-
-Để gọi OCR từ một ứng dụng khác qua HTTP, dùng `app_server.py` như hướng dẫn ở **mục 1**.
-
-Nếu chỉ muốn API không UI, có thể tự viết FastAPI wrapper gọi `pipeline.ocr_engine.extract_text()`.
-
-**Endpoint:**
-
-```bash
-POST /ocr
-Content-Type: application/json
-
-{
-  "image_base64": "<base64-encoded image>",
-  "prompt": "Extract all text and tables from this image.",
-  "model": null
-}
-```
-
-**Response:**
-
-```json
-{
-  "content": "Extracted text and structured data..."
-}
-```
-
----
-
-### 5. REST API Server (Legacy — cách cũ)
-
-```bash
-POST /ocr
-Content-Type: application/json
-
-{
-  "image_base64": "...",
-  "prompt": "Extract all text and tables",
-  "model": null
-}
-```
-
-Trả về:
-
-```json
-{
-  "content": "extracted_text_and_tables_as_markdown"
-}
-```
-
-#### Từ extract-pdf gọi tới
-
-Sau khi API LightOnOCR đang chạy, cấu hình `extract-pdf` để gọi:
-
-1. Mở `extract-pdf/ui-config.json`
-2. Thiết lập profile để dùng `local_http`:
-
-```json
-{
-  "lightonocr-2-1b": {
-    "type": "local_http",
-    "base_url": "http://127.0.0.1:7860/ocr",
-    "model": null
-  }
-}
-```
-
-3. Đảm bảo API server LightOnOCR đang chạy
-4. Từ `extract-pdf` UI, chọn preset `lightonocr-2-1b` rồi submit task
+| Tham số | Mặc định | Mô tả |
+|---|---|---|
+| `--input` | _(bắt buộc)_ | File ảnh, PDF, hoặc thư mục |
+| `--output-dir` | `outputs` | Thư mục lưu kết quả |
+| `--output-name` | `result` | Tên file output (không có extension) |
+| `--max-tokens` | `8192` | Giới hạn token mỗi trang |
+| `--recursive` | False | Quét thư mục đệ quy |
+| `--blank-threshold` | `0.99` | Ngưỡng phát hiện trang trắng |
+| `--no-skip-blank` | False | Không bỏ qua trang trắng |
 
 ---
 
 ### 4. Test export (không cần OCR lại)
 
-Dùng khi đã có JSON và muốn kiểm tra/xuất lại Excel:
-
-```powershell
+```bash
 python test_export.py ..\datasets\Trang000001.json
 python test_export.py ..\datasets\Trang000001.json outputs\custom_output.xlsx
 ```
@@ -282,7 +365,7 @@ python test_export.py ..\datasets\Trang000001.json outputs\custom_output.xlsx
 
 ## Cấu trúc dữ liệu output
 
-### JSON (`OcrResult`)
+### JSON
 
 ```json
 [
@@ -291,21 +374,14 @@ python test_export.py ..\datasets\Trang000001.json outputs\custom_output.xlsx
     "ocr_text": "<văn bản OCR thô>",
     "tables": [
       {
-        "headers": ["SĐT", "HỌ TÊN", "NGÀY SINH", "..."],
+        "headers": ["SĐT", "HỌ TÊN", "NGÀY SINH"],
         "rows": [
-          {
-            "SĐT": "1",
-            "HỌ TÊN": "Nguyễn Văn A",
-            "NGÀY SINH": "01/01/1990",
-            "...": ""
-          }
+          { "SĐT": "1", "HỌ TÊN": "Nguyễn Văn A", "NGÀY SINH": "01/01/1990" }
         ]
       }
     ],
-    "text_lines": ["DANH SÁCH CẤP BẰNG TỐT NGHIỆP", "Số SVTN: 51 SV"],
-    "kv_pairs": {
-      "Số SVTN": "51 SV"
-    },
+    "text_lines": ["DANH SÁCH CẤP BẰNG TỐT NGHIỆP"],
+    "kv_pairs": { "Số SVTN": "51 SV" },
     "table_count": 1
   }
 ]
@@ -313,13 +389,13 @@ python test_export.py ..\datasets\Trang000001.json outputs\custom_output.xlsx
 
 ### Excel (`.xlsx`)
 
-Mỗi **cấu trúc bảng duy nhất** → 1 sheet riêng:
+Mỗi cấu trúc bảng duy nhất → 1 sheet riêng:
 
-| Kiểu dòng         | Màu nền                         | Nội dung                                   |
-| ----------------- | ------------------------------- | ------------------------------------------ |
-| **Header**        | Xanh đậm (#1F4E79)              | Tên các cột                                |
-| **Text metadata** | Xanh nhạt (#EBF3FB, in nghiêng) | Dòng text ngoài bảng (tiêu đề, ghi chú...) |
-| **Dữ liệu bảng**  | Trắng                           | Giá trị từng ô trong bảng                  |
+| Kiểu dòng | Màu nền | Nội dung |
+|---|---|---|
+| **Header** | Xanh đậm (`#1F4E79`) | Tên các cột |
+| **Text metadata** | Xanh nhạt (`#EBF3FB`, in nghiêng) | Dòng text ngoài bảng |
+| **Dữ liệu bảng** | Trắng | Giá trị từng ô |
 
 Ảnh không parse được bảng → sheet `OCR_Raw`.
 
@@ -328,31 +404,31 @@ Mỗi **cấu trúc bảng duy nhất** → 1 sheet riêng:
 ## Kiến trúc pipeline
 
 ```
-PIL Image
+File (ảnh / PDF)
+    │
+    ▼  pipeline.lightonocr_common.load_uploaded_document()
+    │   └── pdf_renderer.render_pdf_page()   — nếu là PDF
     │
     ▼  pipeline.ocr_engine.extract_text()
-    │   ├── _prepare_inputs()    — tokenize + move to device
-    │   └── model.generate()    — LightOnOCR inference
+    │   ├── _prepare_inputs()    — tokenize + move to device/dtype
+    │   └── model.generate()     — LightOnOCR inference
     │
     ▼  pipeline.table_parser.extract_structured_data()
-    │   ├── _parse_html_tables()  — parse <table> HTML
-    │   ├── _parse_markdown_tables() — fallback markdown
-    │   ├── _extract_text_lines() — dòng ngoài bảng
-    │   └── _extract_kv_pairs()   — key: value pairs
+    │   ├── _parse_html_tables()
+    │   ├── _parse_markdown_tables()
+    │   ├── _extract_text_lines()
+    │   └── _extract_kv_pairs()
     │
-    ├──▶ pipeline.exporter.save_json()       → .json
-    └──▶ pipeline.exporter.json_to_excel()   → .xlsx
-         ├── Bước 1: _group_by_structure()
-         ├── Bước 2: _build_rows()
-         ├── Bước 3: _write_sheet_to_workbook()
-         └── Bước 4: wb.save()
+    ├──▶ pipeline.exporter.save_json()      → .json
+    └──▶ pipeline.exporter.json_to_excel()  → .xlsx
 ```
 
 ---
 
 ## Lưu ý
 
-- **Model chạy local hoàn toàn** — không cần internet sau khi tải weights
-- **`app.py`** là bản gốc cho HuggingFace Spaces (dùng `spaces`, load từ HF Hub) — không dùng cho local
-- PDF cần cài `pypdfium2`: `pip install pypdfium2`
-- Temperature mặc định `0.2` trong demo UI, `0.0` (deterministic) trong CLI batch
+- **Model chạy hoàn toàn offline** sau khi tải weights về.
+- **CPU mode:** Model chiếm ~4.5 GB RAM (float32). Trên Docker, đảm bảo cấp đủ RAM (khuyến nghị ≥ 6 GB).
+- **GPU mode:** Model chiếm ~2.3 GB VRAM (bfloat16). Nhanh hơn CPU ~5–10 lần.
+- PDF cần `pypdfium2`: `pip install pypdfium2`
+- Temperature mặc định `0.2` trong API/demo, `0.0` (greedy) trong CLI batch.

@@ -4,16 +4,25 @@
 # Build:
 #   docker build -f docker/Dockerfile -t lightonocr:latest .
 #
-# Model weights KHÔNG bake vào image — mount runtime:
-#   docker run --gpus all -p 7860:7860 \
-#     -v /path/to/model/weights:/weights:ro \
-#     -e MODEL_PATH=/weights \
+# Chạy (CPU):
+#   docker run --rm -p 7861:7861 \
+#     -v /path/to/weights:/app/model:ro \
+#     -e MODEL_PATH=/app/model \
+#     -e LIGHTONOCR_DEVICE=cpu \
 #     lightonocr:latest
+#
+# Chạy (GPU):
+#   docker run --rm --gpus all -p 7861:7861 \
+#     -v /path/to/weights:/app/model:ro \
+#     -e MODEL_PATH=/app/model \
+#     -e LIGHTONOCR_DEVICE=gpu \
+#     lightonocr:latest
+#
+# Model weights KHÔNG bake vào image — mount runtime qua volume.
 # ─────────────────────────────────────────────────────────────────────────────
 
 FROM pytorch/pytorch:2.5.1-cuda12.4-cudnn9-runtime
 
-# Metadata
 LABEL maintainer="local-pipeline" \
       description="LightOnOCR-2-1B — local OCR pipeline"
 
@@ -21,9 +30,9 @@ LABEL maintainer="local-pipeline" \
 ENV DEBIAN_FRONTEND=noninteractive
 
 # ── System dependencies ───────────────────────────────────────────────────────
-# libgl1 + libglib2.0 cần cho OpenCV/Pillow (PDF rendering)
-# git cần để cài transformers từ source
-# wget + unzip cần để tải model weights
+# libgl1 + libglib2.0 : cần cho Pillow/OpenCV (xử lý ảnh, PDF rendering)
+# git                 : cần để cài transformers từ source
+# wget + unzip        : dùng bởi entrypoint để tải model weights nếu chưa có
 RUN apt-get update && apt-get install -y --no-install-recommends \
         libgl1-mesa-glx \
         libglib2.0-0 \
@@ -39,32 +48,35 @@ COPY docker/requirements-docker.txt ./requirements-docker.txt
 RUN pip install --no-cache-dir -r requirements-docker.txt
 
 # ── App code (không bao gồm model weights) ───────────────────────────────────
-COPY pipeline/   ./pipeline/
-COPY api.py      ./api.py
-COPY demo.py     ./demo.py
-COPY run.py      ./run.py
+COPY pipeline/      ./pipeline/
+COPY api.py         ./api.py
+COPY demo.py        ./demo.py
+COPY run.py         ./run.py
 COPY test_export.py ./test_export.py
 
 # ── Runtime scripts ──────────────────────────────────────────────────────────
 COPY docker/entrypoint.sh /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh
 
-# ── Runtime config ────────────────────────────────────────────────────────────
-# MODEL_PATH  : nơi mount model weights (override mặc định = /app/model)
-# GRADIO_HOST : 0.0.0.0 để expose ra ngoài container
-# GRADIO_PORT : port Gradio (mặc định 7860)
+# ── Default environment ───────────────────────────────────────────────────────
+# Tất cả biến môi trường đều có thể override khi chạy container.
 ENV MODEL_PATH=/app/model \
-    GRADIO_HOST=0.0.0.0 \
-    GRADIO_PORT=7860
+    LIGHTONOCR_DEVICE=auto \
+    LIGHTONOCR_DTYPE=auto \
+    API_HOST=0.0.0.0 \
+    API_PORT=7861 \
+    CORS_ALLOW_ORIGINS=* \
+    LOG_LEVEL=INFO \
+    PYTORCH_ENABLE_MPS_FALLBACK=1
 
-EXPOSE 7860
+# ── Ports & Volumes ───────────────────────────────────────────────────────────
+EXPOSE 7861
 
-# Volumes:
-#   /app/model   — model weights (persistent storage)
-#   /app/outputs — kết quả batch (mount read-write)
+# /app/model   — model weights (mount read-only từ host)
+# /app/outputs — kết quả xuất ra (mount read-write)
 VOLUME ["/app/model", "/app/outputs"]
 
 ENTRYPOINT ["/app/entrypoint.sh"]
 
-# Mặc định chạy web demo; override bằng --entrypoint hoặc command
-CMD ["python", "demo.py"]
+# Mặc định chạy REST API server; override bằng command
+CMD ["python", "api.py"]
