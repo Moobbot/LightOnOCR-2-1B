@@ -6,14 +6,14 @@
 #
 # Chạy (CPU):
 #   docker run --rm -p 7861:7861 \
-#     -v /path/to/weights:/app/model:ro \
+#     -v /path/to/weights:/app/model \
 #     -e MODEL_PATH=/app/model \
 #     -e LIGHTONOCR_DEVICE=cpu \
 #     lightonocr:latest
 #
 # Chạy (GPU):
 #   docker run --rm --gpus all -p 7861:7861 \
-#     -v /path/to/weights:/app/model:ro \
+#     -v /path/to/weights:/app/model \
 #     -e MODEL_PATH=/app/model \
 #     -e LIGHTONOCR_DEVICE=gpu \
 #     lightonocr:latest

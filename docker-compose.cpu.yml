@@ -47,7 +47,7 @@ services:
     ports:
       - "${API_PORT:-7861}:7861"
     volumes:
-      - .:/app/model:ro
+      - model_data:/app/model
       - ./outputs:/app/outputs
     environment:
       <<: *cpu-env
@@ -74,7 +74,7 @@ services:
     ports:
       - "7860:7860"
     volumes:
-      - .:/app/model:ro
+      - model_data:/app/model
       - ./outputs:/app/outputs
     environment:
       <<: *cpu-env
@@ -100,7 +100,7 @@ services:
     <<: *build
     container_name: lightonocr-batch
     volumes:
-      - .:/app/model:ro
+      - model_data:/app/model
       - ./datasets:/data:ro
       - ./outputs:/app/outputs
     environment:
@@ -109,3 +109,5 @@ services:
       - batch
     entrypoint: ["python", "run.py"]
     command: ["--input", "/data", "--output-dir", "/app/outputs"]
+volumes:
+  model_data:

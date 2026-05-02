@@ -129,4 +129,4 @@ services:
     entrypoint: ["python", "run.py"]
     command: ["--input", "/data", "--output-dir", "/app/outputs"]
 volumes:
-    model_data:
+  model_data:
