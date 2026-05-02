@@ -14,17 +14,22 @@ TARGET_DIR="${MODEL_PATH:-/app/model}"
 # Các file bắt buộc phải có (và không được rỗng)
 REQUIRED_FILES=(
     "model.safetensors"
+    "config.json"
+    "generation_config.json"
     "tokenizer.json"
     "tokenizer_config.json"
     "processor_config.json"
+    "special_tokens_map.json"
 )
 
 # Các file JSON cần kiểm tra tính hợp lệ (parse được)
 JSON_FILES=(
+    "config.json"
+    "generation_config.json"
     "tokenizer.json"
     "tokenizer_config.json"
     "processor_config.json"
-    "config.json"
+    "special_tokens_map.json"
 )
 
 echo "------------------------------------------------------------"
