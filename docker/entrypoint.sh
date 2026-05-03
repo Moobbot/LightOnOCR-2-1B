@@ -10,6 +10,7 @@ MODEL_URL="https://github.com/Moobbot/LightOnOCR-2-1B/releases/download/v-1.0.0/
 
 # Sử dụng MODEL_PATH từ environment, mặc định là /app/model
 TARGET_DIR="${MODEL_PATH:-/app/model}"
+BOOTSTRAP_DIR="/app/model-bootstrap"
 
 # Các file bắt buộc phải có (và không được rỗng)
 REQUIRED_FILES=(
@@ -36,6 +37,27 @@ echo "------------------------------------------------------------"
 echo "LightOnOCR-2-1B Startup"
 echo "Target directory: $TARGET_DIR"
 echo "------------------------------------------------------------"
+
+# ── Bổ sung file cấu hình/tokenizer từ image (nếu thiếu) ───────────────────
+# Model zip có thể chỉ chứa model.safetensors; các file JSON được bundle sẵn
+# trong image để tránh crash khi transformers load generation config/tokenizer.
+bootstrap_model_files() {
+    if [ ! -d "$BOOTSTRAP_DIR" ]; then
+        return 0
+    fi
+
+    mkdir -p "$TARGET_DIR"
+    for f in "${REQUIRED_FILES[@]}"; do
+        src="$BOOTSTRAP_DIR/$f"
+        dst="$TARGET_DIR/$f"
+        if [ ! -f "$dst" ] && [ -f "$src" ]; then
+            echo "[INFO] Bổ sung file thiếu từ bootstrap: $f"
+            cp -f "$src" "$dst"
+        fi
+    done
+}
+
+bootstrap_model_files
 
 # ── Kiểm tra đủ file và không rỗng ──────────────────────────
 _needs_download=0
@@ -105,6 +127,7 @@ else
     echo "[OK] Model đã sẵn sàng."
 
     # Xác nhận lại sau khi giải nén
+    bootstrap_model_files
     for f in "${REQUIRED_FILES[@]}"; do
         fpath="$TARGET_DIR/$f"
         if [ ! -f "$fpath" ] || [ ! -s "$fpath" ]; then

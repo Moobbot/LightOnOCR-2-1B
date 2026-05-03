@@ -54,6 +54,16 @@ COPY demo.py        ./demo.py
 COPY run.py         ./run.py
 COPY test_export.py ./test_export.py
 
+# Bundle model config/tokenizer assets into image. These are copied into
+# MODEL_PATH by entrypoint when the runtime model volume only has weights.
+COPY config.json             /app/model-bootstrap/config.json
+COPY generation_config.json  /app/model-bootstrap/generation_config.json
+COPY tokenizer.json          /app/model-bootstrap/tokenizer.json
+COPY tokenizer_config.json   /app/model-bootstrap/tokenizer_config.json
+COPY processor_config.json   /app/model-bootstrap/processor_config.json
+COPY special_tokens_map.json /app/model-bootstrap/special_tokens_map.json
+COPY added_tokens.json       /app/model-bootstrap/added_tokens.json
+
 # ── Runtime scripts ──────────────────────────────────────────────────────────
 COPY docker/entrypoint.sh /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh
