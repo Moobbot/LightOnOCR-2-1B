@@ -82,10 +82,10 @@ python -c "import sys; print('Executable:', sys.executable)"
 
 echo.
 if /I "%DEVICE_MODE%"=="cpu" (
-    echo === Step 1: Install PyTorch (CPU) ===
+    echo === Step 1: Install PyTorch ^(CPU^) ===
     pip install torch torchvision
 ) else (
-    echo === Step 1: Install PyTorch (CUDA 12.1) ===
+    echo === Step 1: Install PyTorch ^(CUDA 12.1^) ===
     pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
 )
 if errorlevel 1 (
@@ -105,31 +105,36 @@ echo.
 echo === Step 3: Download and Extract Model weights ===
 set MODEL_URL=https://github.com/Moobbot/LightOnOCR-2-1B/releases/download/v-1.0.0/model.zip
 set MODEL_FILE=model.safetensors
+set MODEL_ZIP=model.zip
+set MODEL_DOWNLOAD_SCRIPT=download_model.ps1
 
 if not exist "%MODEL_FILE%" (
     echo [INFO] %MODEL_FILE% khong tim thay. Dang chuan bi tai model...
-    if not exist "model.zip" (
-        echo [INFO] Dang tai model.zip tu GitHub...
-        powershell -Command "Invoke-WebRequest -Uri '%MODEL_URL%' -OutFile 'model.zip'"
-        if errorlevel 1 (
-            echo [ERROR] Khong the tai model.zip.
-            pause
-            exit /b 1
-        )
-    ) else (
-        echo [INFO] Da co file model.zip.
+    if not exist "%MODEL_DOWNLOAD_SCRIPT%" (
+        echo [ERROR] Khong tim thay %MODEL_DOWNLOAD_SCRIPT%.
+        exit /b 1
     )
-    
-    echo [INFO] Dang giai nen model.zip...
-    powershell -Command "Expand-Archive -Path 'model.zip' -DestinationPath '.' -Force"
+
+    powershell -NoProfile -ExecutionPolicy Bypass -File "%MODEL_DOWNLOAD_SCRIPT%" -Url "%MODEL_URL%" -ZipPath "%MODEL_ZIP%" -ModelFile "%MODEL_FILE%"
     if errorlevel 1 (
-        echo [ERROR] Khong the giai nen model.zip.
-        pause
+        echo [ERROR] Khong the tai day du %MODEL_ZIP%.
         exit /b 1
     )
     
-    echo [INFO] Dang xoa file model.zip sau khi giai nen...
-    del model.zip
+    echo [INFO] Dang giai nen %MODEL_ZIP%...
+    powershell -NoProfile -Command "Expand-Archive -Path '%MODEL_ZIP%' -DestinationPath '.' -Force"
+    if errorlevel 1 (
+        echo [ERROR] Khong the giai nen %MODEL_ZIP%.
+        exit /b 1
+    )
+
+    if not exist "%MODEL_FILE%" (
+        echo [ERROR] Giai nen xong nhung khong thay %MODEL_FILE%.
+        exit /b 1
+    )
+    
+    echo [INFO] Dang xoa file %MODEL_ZIP% sau khi giai nen...
+    del "%MODEL_ZIP%"
 ) else (
     echo [INFO] Da co file %MODEL_FILE%. Bo qua buoc tai model.
 )
