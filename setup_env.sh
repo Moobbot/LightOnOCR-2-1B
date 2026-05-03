@@ -121,3 +121,4 @@ python3 -c "import torch, transformers, PIL, pandas, openpyxl, pypdfium2; print(
 echo ""
 echo "=== Setup complete! ==="
 echo "De su dung: conda activate $ENV_NAME"
+read -p "Press Enter to exit"

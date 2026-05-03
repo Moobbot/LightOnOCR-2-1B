@@ -141,4 +141,5 @@ python -c "import torch, transformers, PIL, pandas, openpyxl, pypdfium2; print('
 echo.
 echo === Setup complete! ===
 echo De su dung: conda activate %ENV_NAME%
+pause
 endlocal
