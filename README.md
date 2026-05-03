@@ -52,17 +52,18 @@ LightOnOCR-2-1B/
 
 ## Biến môi trường
 
-| Biến | Mặc định | Mô tả |
-|---|---|---|
-| `MODEL_PATH` | _(thư mục hiện tại)_ | Đường dẫn tới model weights |
-| `LIGHTONOCR_DEVICE` | `auto` | `cpu` / `gpu` / `auto` |
-| `LIGHTONOCR_DTYPE` | `auto` | `float32` / `bfloat16` / `auto` |
-| `API_HOST` | `0.0.0.0` | Host bind của FastAPI |
-| `API_PORT` | `7861` | Port của FastAPI |
-| `CORS_ALLOW_ORIGINS` | `*` | Origin được phép CORS |
-| `LOG_LEVEL` | `INFO` | `DEBUG` / `INFO` / `WARNING` / `ERROR` |
+| Biến                 | Mặc định             | Mô tả                                  |
+| -------------------- | -------------------- | -------------------------------------- |
+| `MODEL_PATH`         | _(thư mục hiện tại)_ | Đường dẫn tới model weights            |
+| `LIGHTONOCR_DEVICE`  | `auto`               | `cpu` / `gpu` / `auto`                 |
+| `LIGHTONOCR_DTYPE`   | `auto`               | `float32` / `bfloat16` / `auto`        |
+| `API_HOST`           | `0.0.0.0`            | Host bind của FastAPI                  |
+| `API_PORT`           | `7861`               | Port của FastAPI                       |
+| `CORS_ALLOW_ORIGINS` | `*`                  | Origin được phép CORS                  |
+| `LOG_LEVEL`          | `INFO`               | `DEBUG` / `INFO` / `WARNING` / `ERROR` |
 
 > **Ghi chú về device/dtype:**
+>
 > - `LIGHTONOCR_DEVICE=auto` → tự chọn GPU nếu có, ngược lại CPU.
 > - `LIGHTONOCR_DTYPE=auto` → `bfloat16` trên GPU (tiết kiệm VRAM ~50%), `float32` trên CPU.
 > - Khi chạy CPU, model chiếm khoảng **~4.5 GB RAM** (float32). Đảm bảo Docker Desktop được cấp đủ RAM.
@@ -83,10 +84,10 @@ cp .env.example .env
 
 Dự án cung cấp **hai file Compose** tương ứng với hai chế độ chạy:
 
-| File | Chế độ | Yêu cầu |
-|---|---|---|
-| `docker-compose.yml` | **GPU** (mặc định) | nvidia-container-toolkit |
-| `docker-compose.cpu.yml` | **CPU** (override) | Không cần GPU |
+| File                     | Chế độ             | Yêu cầu                  |
+| ------------------------ | ------------------ | ------------------------ |
+| `docker-compose.yml`     | **GPU** (mặc định) | nvidia-container-toolkit |
+| `docker-compose.cpu.yml` | **CPU** (override) | Không cần GPU            |
 
 ---
 
@@ -129,13 +130,13 @@ docker compose -f docker-compose.cpu.yml \
 >
 > Model LightOnOCR-2-1B chiếm RAM rất lớn khi chạy trên CPU:
 >
-> | Thành phần | RAM |
-> |---|---|
-> | Model weights (float32) | ~4.6 GB |
-> | KV cache (4096 tokens) | ~1.8 GB |
-> | Input image tensors | ~0.3 GB |
-> | OS + Docker overhead | ~0.5 GB |
-> | **Tổng cần tối thiểu** | **~7.2 GB** |
+> | Thành phần              | RAM         |
+> | ----------------------- | ----------- |
+> | Model weights (float32) | ~4.6 GB     |
+> | KV cache (4096 tokens)  | ~1.8 GB     |
+> | Input image tensors     | ~0.3 GB     |
+> | OS + Docker overhead    | ~0.5 GB     |
+> | **Tổng cần tối thiểu**  | **~7.2 GB** |
 >
 > → Docker Desktop **phải được cấp ≥ 12 GB RAM**. Nếu thiếu, container sẽ **tự động restart** (OOM Killer) ngay khi bắt đầu xử lý ảnh, dù khởi động thành công.
 
@@ -174,6 +175,7 @@ docker compose logs -f api
 ```
 
 API sẵn sàng tại:
+
 - Health check: `http://localhost:7861/`
 - OCR endpoint: `POST http://localhost:7861/extract`
 - API docs: `http://localhost:7861/docs`
@@ -189,9 +191,23 @@ docker compose down
 ### Phương án B — Conda (local development)
 
 **Yêu cầu:**
+
 - Python 3.10+
 - Conda (Miniconda / Anaconda)
 - GPU NVIDIA CUDA 12.x _(khuyến nghị — CPU cũng chạy được nhưng chậm)_
+
+#### Setup nhanh tu thu muc goc extract-pdf
+
+```powershell
+cd ..
+.\setup-all.ps1
+```
+
+Co the chon CPU:
+
+```powershell
+.\setup-all.ps1 -Device cpu
+```
 
 #### Bước 1 — Tạo môi trường
 
@@ -209,20 +225,24 @@ pip install torch torchvision torchaudio --index-url https://download.pytorch.or
 #### Bước 3 — Cài thư viện và tải model
 
 **Windows:**
+
 ```powershell
 .\setup_env.bat
 ```
 
 **Linux/macOS:**
+
 ```bash
 bash setup_env.sh
 ```
 
 Script sẽ tự động:
+
 - Cài đặt các thư viện Python từ `requirements.txt`
 - Tải model weights (~2 GB) từ GitHub Releases nếu chưa có
 
 Hoặc cài thủ công:
+
 ```bash
 pip install -r requirements.txt
 ```
@@ -249,11 +269,11 @@ Server chạy tại `http://localhost:7861`
 
 **Endpoints:**
 
-| Method | Path | Mô tả |
-|---|---|---|
-| `GET` | `/` | Health check + thông tin device |
-| `POST` | `/extract` | OCR file ảnh hoặc PDF |
-| `POST` | `/download` | Tải file output (JSON/Excel) |
+| Method | Path        | Mô tả                           |
+| ------ | ----------- | ------------------------------- |
+| `GET`  | `/`         | Health check + thông tin device |
+| `POST` | `/extract`  | OCR file ảnh hoặc PDF           |
+| `POST` | `/download` | Tải file output (JSON/Excel)    |
 
 **Ví dụ gọi `/extract`:**
 
@@ -342,15 +362,15 @@ python run.py --input ..\datasets\ --max-tokens 8192
 
 **Tham số CLI:**
 
-| Tham số | Mặc định | Mô tả |
-|---|---|---|
-| `--input` | _(bắt buộc)_ | File ảnh, PDF, hoặc thư mục |
-| `--output-dir` | `outputs` | Thư mục lưu kết quả |
-| `--output-name` | `result` | Tên file output (không có extension) |
-| `--max-tokens` | `8192` | Giới hạn token mỗi trang |
-| `--recursive` | False | Quét thư mục đệ quy |
-| `--blank-threshold` | `0.99` | Ngưỡng phát hiện trang trắng |
-| `--no-skip-blank` | False | Không bỏ qua trang trắng |
+| Tham số             | Mặc định     | Mô tả                                |
+| ------------------- | ------------ | ------------------------------------ |
+| `--input`           | _(bắt buộc)_ | File ảnh, PDF, hoặc thư mục          |
+| `--output-dir`      | `outputs`    | Thư mục lưu kết quả                  |
+| `--output-name`     | `result`     | Tên file output (không có extension) |
+| `--max-tokens`      | `8192`       | Giới hạn token mỗi trang             |
+| `--recursive`       | False        | Quét thư mục đệ quy                  |
+| `--blank-threshold` | `0.99`       | Ngưỡng phát hiện trang trắng         |
+| `--no-skip-blank`   | False        | Không bỏ qua trang trắng             |
 
 ---
 
@@ -391,11 +411,11 @@ python test_export.py ..\datasets\Trang000001.json outputs\custom_output.xlsx
 
 Mỗi cấu trúc bảng duy nhất → 1 sheet riêng:
 
-| Kiểu dòng | Màu nền | Nội dung |
-|---|---|---|
-| **Header** | Xanh đậm (`#1F4E79`) | Tên các cột |
+| Kiểu dòng         | Màu nền                           | Nội dung             |
+| ----------------- | --------------------------------- | -------------------- |
+| **Header**        | Xanh đậm (`#1F4E79`)              | Tên các cột          |
 | **Text metadata** | Xanh nhạt (`#EBF3FB`, in nghiêng) | Dòng text ngoài bảng |
-| **Dữ liệu bảng** | Trắng | Giá trị từng ô |
+| **Dữ liệu bảng**  | Trắng                             | Giá trị từng ô       |
 
 Ảnh không parse được bảng → sheet `OCR_Raw`.
 
