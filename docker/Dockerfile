@@ -63,6 +63,7 @@ COPY tokenizer_config.json   /app/model-bootstrap/tokenizer_config.json
 COPY processor_config.json   /app/model-bootstrap/processor_config.json
 COPY special_tokens_map.json /app/model-bootstrap/special_tokens_map.json
 COPY added_tokens.json       /app/model-bootstrap/added_tokens.json
+COPY chat_template.jinja     /app/model-bootstrap/chat_template.jinja
 
 # ── Runtime scripts ──────────────────────────────────────────────────────────
 COPY docker/entrypoint.sh /app/entrypoint.sh

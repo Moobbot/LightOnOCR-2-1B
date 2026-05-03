@@ -93,7 +93,8 @@ def _prepare_inputs(processor, image: Image.Image, prompt: str) -> dict:
     Returns:
         dict các tensors đã chuyển sang đúng device / dtype.
     """
-    if hasattr(processor, "apply_chat_template"):
+    chat_template = getattr(processor, "chat_template", None)
+    if hasattr(processor, "apply_chat_template") and chat_template:
         chat = [
             {
                 "role": "user",

@@ -55,6 +55,11 @@ bootstrap_model_files() {
             cp -f "$src" "$dst"
         fi
     done
+
+    if [ ! -f "$TARGET_DIR/chat_template.jinja" ] && [ -f "$BOOTSTRAP_DIR/chat_template.jinja" ]; then
+        echo "[INFO] Bổ sung file thiếu từ bootstrap: chat_template.jinja"
+        cp -f "$BOOTSTRAP_DIR/chat_template.jinja" "$TARGET_DIR/chat_template.jinja"
+    fi
 }
 
 bootstrap_model_files
