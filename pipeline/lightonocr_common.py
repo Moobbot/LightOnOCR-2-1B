@@ -257,13 +257,20 @@ def process_uploaded_document(
         max_tokens,
     )
     loaded = load_uploaded_document(file_input, page_num)
-    bundle = extract_ocr_from_image(
-        loaded.image,
-        loaded.source_name,
-        prompt=prompt,
-        temperature=temperature,
-        max_tokens=max_tokens,
-    )
+    try:
+        bundle = extract_ocr_from_image(
+            loaded.image,
+            loaded.source_name,
+            prompt=prompt,
+            temperature=temperature,
+            max_tokens=max_tokens,
+        )
+    finally:
+        try:
+            loaded.image.close()
+        except Exception:
+            logger.debug("Không thể đóng PIL image sau OCR.", exc_info=True)
+
     if bundle.status == "BLANK_PAGE":
         bundle = OCRBundle(
             status=bundle.status,
