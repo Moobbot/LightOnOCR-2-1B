@@ -16,6 +16,7 @@ Hàm hỗ trợ:
 from __future__ import annotations
 
 import logging
+import gc
 
 import torch
 from PIL import Image
@@ -23,6 +24,29 @@ from PIL import Image
 from .model import DEVICE, DTYPE
 
 logger = logging.getLogger("lightonocr.ocr_engine")
+
+
+def _cleanup_inference_memory() -> None:
+    """Release per-request inference tensors and cached CUDA blocks."""
+    gc.collect()
+    if DEVICE != "cuda" or not torch.cuda.is_available():
+        return
+
+    allocated = torch.cuda.memory_allocated()
+    reserved_before = torch.cuda.memory_reserved()
+    torch.cuda.empty_cache()
+    if hasattr(torch.cuda, "ipc_collect"):
+        try:
+            torch.cuda.ipc_collect()
+        except Exception:
+            logger.debug("torch.cuda.ipc_collect failed", exc_info=True)
+    reserved_after = torch.cuda.memory_reserved()
+    logger.debug(
+        "cuda cleanup | allocated=%d | reserved_before=%d | reserved_after=%d",
+        allocated,
+        reserved_before,
+        reserved_after,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -167,21 +191,30 @@ def extract_text(
         do_sample,
     )
 
-    inputs = _prepare_inputs(processor, image, prompt)
+    inputs = None
+    outputs = None
+    generated_ids = None
+    try:
+        inputs = _prepare_inputs(processor, image, prompt)
 
-    with torch.no_grad():
-        outputs = model.generate(
-            **inputs,
-            max_new_tokens=max_tokens,
-            temperature=temperature if do_sample else 1.0,
-            top_p=top_p if do_sample else 1.0,
-            use_cache=True,
-            do_sample=do_sample,
-        )
+        with torch.inference_mode():
+            outputs = model.generate(
+                **inputs,
+                max_new_tokens=max_tokens,
+                temperature=temperature if do_sample else 1.0,
+                top_p=top_p if do_sample else 1.0,
+                use_cache=True,
+                do_sample=do_sample,
+            )
 
-    input_len = inputs["input_ids"].shape[1]
-    generated_ids = outputs[0][input_len:]
-    raw_text = processor.decode(generated_ids, skip_special_tokens=True)
+        input_len = inputs["input_ids"].shape[1]
+        generated_ids = outputs[0][input_len:].detach().cpu()
+        raw_text = processor.decode(generated_ids, skip_special_tokens=True)
 
-    logger.debug("extract_text | output_tokens=%d", len(generated_ids))
-    return clean_output_text(raw_text)
+        logger.debug("extract_text | output_tokens=%d", len(generated_ids))
+        return clean_output_text(raw_text)
+    finally:
+        inputs = None
+        outputs = None
+        generated_ids = None
+        _cleanup_inference_memory()
